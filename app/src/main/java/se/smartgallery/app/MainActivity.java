@@ -1,119 +1,28 @@
 package se.smartgallery.app;
 
-import android.Manifest;
-import android.app.*;
-import android.os.*;
-import android.content.*;
-import android.content.pm.PackageManager;
-import android.database.Cursor;
-import android.graphics.*;
-import android.net.Uri;
-import android.provider.MediaStore;
-import android.view.*;
-import android.widget.*;
-import java.util.*;
-import java.util.concurrent.*;
+import android.Manifest;import android.app.*;import android.os.*;import android.content.*;import android.content.pm.PackageManager;import android.database.Cursor;import android.graphics.*;import android.graphics.drawable.GradientDrawable;import android.net.Uri;import android.provider.MediaStore;import android.view.*;import android.widget.*;import java.text.*;import java.util.*;import java.util.concurrent.*;
 
-public class MainActivity extends Activity {
-    static final int REQ=44;
-    final int BG=Color.rgb(11,15,20), CARD=Color.rgb(24,30,38), ACC=Color.rgb(123,231,255);
-    LinearLayout root, top; GridView grid; TextView info; EditText search; ArrayList<Item> all=new ArrayList<>(), shown=new ArrayList<>();
-    GalleryAdapter adapter; ExecutorService pool=Executors.newFixedThreadPool(4); SharedPreferences prefs;
-    String filter="Alla";
-
-    static class Item {
-        long id,date,size; String name,path,mime; Uri uri;
-        Item(long i,long d,long s,String n,String p,String m,Uri u){id=i;date=d;size=s;name=n;path=p;mime=m;uri=u;}
-        boolean video(){return mime!=null&&mime.startsWith("video/");}
-    }
-
-    @Override public void onCreate(Bundle b){super.onCreate(b);prefs=getSharedPreferences("gallery",0);build();request();}
-    @Override protected void onDestroy(){pool.shutdownNow();super.onDestroy();}
-
-    TextView tv(String s,int sp,boolean bold){TextView v=new TextView(this);v.setText(s);v.setTextSize(sp);v.setTextColor(Color.WHITE);v.setTypeface(null,bold?1:0);return v;}
-    Button button(String s){Button b=new Button(this);b.setText(s);b.setAllCaps(false);b.setTextColor(Color.WHITE);b.setBackgroundTintList(android.content.res.ColorStateList.valueOf(CARD));return b;}
-
-    void build(){
-        getWindow().setStatusBarColor(BG);getWindow().setNavigationBarColor(BG);
-        root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);root.setPadding(14,18,14,8);root.setBackgroundColor(BG);
-        TextView title=tv("SMART GALLERY",27,true);root.addView(title);
-        TextView sub=tv("Sortera • hitta • städa • lokalt på telefonen",14,false);sub.setTextColor(ACC);root.addView(sub);
-
-        search=new EditText(this);search.setHint("Sök filnamn, album eller mapp…");search.setSingleLine(true);search.setTextColor(Color.WHITE);search.setHintTextColor(Color.GRAY);root.addView(search,new LinearLayout.LayoutParams(-1,-2));
-        search.setOnEditorActionListener((v,a,e)->{applyFilter();return true;});
-
-        HorizontalScrollView hs=new HorizontalScrollView(this);top=new LinearLayout(this);top.setOrientation(LinearLayout.HORIZONTAL);
-        String[] modes={"Alla","Kamera","Skärmbilder","Videor","Favoriter","Stora filer","Dubbletter","Album"};
-        for(String m:modes){Button b=button(m);b.setOnClickListener(v->{filter=m;applyFilter();});top.addView(b);}
-        hs.addView(top);root.addView(hs,new LinearLayout.LayoutParams(-1,-2));
-
-        info=tv("Läser bilder…",14,false);info.setPadding(4,8,4,8);info.setTextColor(Color.LTGRAY);root.addView(info);
-        grid=new GridView(this);grid.setNumColumns(getResources().getConfiguration().smallestScreenWidthDp>=600?6:3);grid.setHorizontalSpacing(5);grid.setVerticalSpacing(5);grid.setStretchMode(GridView.STRETCH_COLUMN_WIDTH);
-        adapter=new GalleryAdapter();grid.setAdapter(adapter);root.addView(grid,new LinearLayout.LayoutParams(-1,0,1));
-        grid.setOnItemClickListener((p,v,pos,id)->open(shown.get(pos)));
-        grid.setOnItemLongClickListener((p,v,pos,id)->{favoriteDialog(shown.get(pos));return true;});
-
-        LinearLayout bar=new LinearLayout(this);bar.setOrientation(LinearLayout.HORIZONTAL);
-        Button refresh=button("↻ Uppdatera");refresh.setOnClickListener(v->load());bar.addView(refresh,new LinearLayout.LayoutParams(0,-2,1));
-        Button clean=button("🧹 Städa");clean.setOnClickListener(v->cleanPage());bar.addView(clean,new LinearLayout.LayoutParams(0,-2,1));
-        Button albums=button("📁 Album");albums.setOnClickListener(v->{filter="Album";applyFilter();});bar.addView(albums,new LinearLayout.LayoutParams(0,-2,1));
-        root.addView(bar);
-        setContentView(root);
-    }
-
-    void request(){
-        ArrayList<String> q=new ArrayList<>();
-        if(Build.VERSION.SDK_INT>=33){if(checkSelfPermission(Manifest.permission.READ_MEDIA_IMAGES)!=PackageManager.PERMISSION_GRANTED)q.add(Manifest.permission.READ_MEDIA_IMAGES);if(checkSelfPermission(Manifest.permission.READ_MEDIA_VIDEO)!=PackageManager.PERMISSION_GRANTED)q.add(Manifest.permission.READ_MEDIA_VIDEO);}else if(checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE)!=PackageManager.PERMISSION_GRANTED)q.add(Manifest.permission.READ_EXTERNAL_STORAGE);
-        if(q.isEmpty())load();else requestPermissions(q.toArray(new String[0]),REQ);
-    }
-    @Override public void onRequestPermissionsResult(int r,String[]p,int[]g){super.onRequestPermissionsResult(r,p,g);if(r==REQ)load();}
-
-    void load(){info.setText("Läser mediebibliotek…");pool.execute(()->{
-        ArrayList<Item> list=new ArrayList<>();
-        Uri u=MediaStore.Files.getContentUri("external");
-        ArrayList<String> cols=new ArrayList<>(Arrays.asList(MediaStore.Files.FileColumns._ID,MediaStore.Files.FileColumns.DISPLAY_NAME,MediaStore.Files.FileColumns.MIME_TYPE,MediaStore.Files.FileColumns.SIZE,MediaStore.Files.FileColumns.DATE_MODIFIED,MediaStore.Files.FileColumns.MEDIA_TYPE));
-        if(Build.VERSION.SDK_INT>=29)cols.add(MediaStore.Files.FileColumns.RELATIVE_PATH);else cols.add(MediaStore.Files.FileColumns.DATA);
-        String sel=MediaStore.Files.FileColumns.MEDIA_TYPE+"=? OR "+MediaStore.Files.FileColumns.MEDIA_TYPE+"=?";
-        String[] args={"1","3"};
-        try(Cursor c=getContentResolver().query(u,cols.toArray(new String[0]),sel,args,MediaStore.Files.FileColumns.DATE_MODIFIED+" DESC")){
-            if(c!=null){int id=c.getColumnIndexOrThrow(MediaStore.Files.FileColumns._ID),nm=c.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DISPLAY_NAME),mi=c.getColumnIndexOrThrow(MediaStore.Files.FileColumns.MIME_TYPE),sz=c.getColumnIndexOrThrow(MediaStore.Files.FileColumns.SIZE),dt=c.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATE_MODIFIED),mt=c.getColumnIndexOrThrow(MediaStore.Files.FileColumns.MEDIA_TYPE),pa=c.getColumnIndexOrThrow(Build.VERSION.SDK_INT>=29?MediaStore.Files.FileColumns.RELATIVE_PATH:MediaStore.Files.FileColumns.DATA);while(c.moveToNext()){
-                long x=c.getLong(id);int type=c.getInt(mt);Uri item=type==3?Uri.withAppendedPath(MediaStore.Video.Media.EXTERNAL_CONTENT_URI,""+x):Uri.withAppendedPath(MediaStore.Images.Media.EXTERNAL_CONTENT_URI,""+x);list.add(new Item(x,c.getLong(dt),c.getLong(sz),c.getString(nm),c.getString(pa),c.getString(mi),item));
-            }}
-        }catch(Exception e){}
-        runOnUiThread(()->{all=list;applyFilter();});
-    });}
-
-    void applyFilter(){
-        String q=search.getText().toString().trim().toLowerCase(Locale.ROOT);shown.clear();
-        if(filter.equals("Album")){showAlbums(q);return;}
-        HashMap<String,Integer> dup=new HashMap<>();for(Item i:all){String k=i.size+"|"+(i.name==null?"":i.name.toLowerCase(Locale.ROOT));dup.put(k,dup.getOrDefault(k,0)+1);}
-        for(Item i:all){String text=((i.name==null?"":i.name)+" "+(i.path==null?"":i.path)).toLowerCase(Locale.ROOT);if(!q.isEmpty()&&!text.contains(q))continue;boolean ok=true;
-            if(filter.equals("Kamera"))ok=text.contains("dcim/camera");
-            else if(filter.equals("Skärmbilder"))ok=text.contains("screenshot")||text.contains("screenshots");
-            else if(filter.equals("Videor"))ok=i.video();
-            else if(filter.equals("Favoriter"))ok=prefs.getBoolean("fav_"+i.uri,false);
-            else if(filter.equals("Stora filer"))ok=i.size>=20L*1024*1024;
-            else if(filter.equals("Dubbletter")){String k=i.size+"|"+(i.name==null?"":i.name.toLowerCase(Locale.ROOT));ok=dup.getOrDefault(k,0)>1;}
-            if(ok)shown.add(i);
-        }
-        adapter.notifyDataSetChanged();info.setText(filter+" • "+shown.size()+" objekt"+(filter.equals("Dubbletter")?" • kandidater, inget raderas automatiskt":""));
-    }
-
-    void showAlbums(String q){
-        LinkedHashMap<String,Integer> m=new LinkedHashMap<>();for(Item i:all){String p=i.path==null?"Okänd mapp":i.path;String name=p;String[] parts=p.replace('\\','/').split("/");if(parts.length>0&&parts[parts.length-1].length()>0)name=parts[parts.length-1];else if(parts.length>1)name=parts[parts.length-2];if(!q.isEmpty()&&!name.toLowerCase(Locale.ROOT).contains(q))continue;m.put(name,m.getOrDefault(name,0)+1);}String[] arr=new String[m.size()];int k=0;for(Map.Entry<String,Integer>e:m.entrySet())arr[k++]=e.getKey()+"  •  "+e.getValue();new AlertDialog.Builder(this).setTitle("Album / mappar").setItems(arr,(d,w)->{String album=arr[w].split("  •  ")[0];search.setText(album);filter="Alla";applyFilter();}).setPositiveButton("Stäng",null).show();info.setText("Album • "+m.size()+" mappar");adapter.notifyDataSetChanged();}
-
-    void open(Item i){try{Intent x=new Intent(Intent.ACTION_VIEW);x.setDataAndType(i.uri,i.mime);x.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);startActivity(x);}catch(Exception e){Toast.makeText(this,"Kan inte öppna filen",Toast.LENGTH_SHORT).show();}}
-    void favoriteDialog(Item i){boolean f=prefs.getBoolean("fav_"+i.uri,false);new AlertDialog.Builder(this).setTitle(i.name).setMessage((i.video()?"Video":"Bild")+"\n"+human(i.size)+"\n"+(i.path==null?"":i.path)).setPositiveButton(f?"Ta bort favorit":"★ Favorit",(d,w)->{prefs.edit().putBoolean("fav_"+i.uri,!f).apply();applyFilter();}).setNeutralButton("Öppna",(d,w)->open(i)).setNegativeButton("Stäng",null).show();}
-
-    void cleanPage(){
-        long large=0;int screenshots=0,dups=0;HashMap<String,Integer> m=new HashMap<>();for(Item i:all){if(i.size>=20L*1024*1024)large+=i.size;String t=((i.name==null?"":i.name)+" "+(i.path==null?"":i.path)).toLowerCase(Locale.ROOT);if(t.contains("screenshot"))screenshots++;String k=i.size+"|"+(i.name==null?"":i.name.toLowerCase(Locale.ROOT));m.put(k,m.getOrDefault(k,0)+1);}for(int n:m.values())if(n>1)dups+=n;
-        final int s=screenshots,d=dups;final long l=large;new AlertDialog.Builder(this).setTitle("🧹 Smart städning").setMessage("Skärmbilder: "+s+"\nStora filer ≥20 MB: "+human(l)+"\nMöjliga dubbletter: "+d+"\n\nSmart Gallery raderar aldrig automatiskt. Välj en kategori och granska själv.").setPositiveButton("Stora filer",(x,w)->{filter="Stora filer";applyFilter();}).setNeutralButton("Dubbletter",(x,w)->{filter="Dubbletter";applyFilter();}).setNegativeButton("Stäng",null).show();
-    }
-
-    String human(long b){if(b<1024*1024)return (b/1024)+" KB";if(b<1024L*1024*1024)return String.format(Locale.ROOT,"%.1f MB",b/1048576.0);return String.format(Locale.ROOT,"%.2f GB",b/1073741824.0);}
-
-    class GalleryAdapter extends BaseAdapter {
-        public int getCount(){return shown.size();}public Object getItem(int p){return shown.get(p);}public long getItemId(int p){return shown.get(p).id;}
-        public View getView(int p,View old,android.view.ViewGroup parent){ImageView im=old instanceof ImageView?(ImageView)old:new ImageView(MainActivity.this);int h=(getResources().getDisplayMetrics().widthPixels-38)/3;im.setLayoutParams(new GridView.LayoutParams(-1,h));im.setScaleType(ImageView.ScaleType.CENTER_CROP);im.setBackgroundColor(CARD);Item item=shown.get(p);im.setTag(item.uri.toString());im.setImageDrawable(null);pool.execute(()->{Bitmap b=null;try{if(Build.VERSION.SDK_INT>=29)b=getContentResolver().loadThumbnail(item.uri,new android.util.Size(360,360),null);else{java.io.InputStream in=getContentResolver().openInputStream(item.uri);if(in!=null){BitmapFactory.Options o=new BitmapFactory.Options();o.inSampleSize=4;b=BitmapFactory.decodeStream(in,null,o);in.close();}}}catch(Exception e){}final Bitmap bm=b;runOnUiThread(()->{if(item.uri.toString().equals(im.getTag())&&bm!=null)im.setImageBitmap(bm);});});return im;}
-    }
+public class MainActivity extends Activity{
+ static final int REQ=44; final int BG=Color.rgb(9,12,17),CARD=Color.rgb(22,27,35),ACC=Color.rgb(115,220,255),MUT=Color.rgb(160,170,184); LinearLayout root,chips;GridView grid;TextView info,hero;EditText search;ArrayList<Item>all=new ArrayList<>(),shown=new ArrayList<>();GalleryAdapter adapter;ExecutorService pool=Executors.newFixedThreadPool(4);SharedPreferences prefs;String filter="Alla";boolean newest=true;
+ static class Item{long id,date,size;String name,path,mime;Uri uri;Item(long i,long d,long s,String n,String p,String m,Uri u){id=i;date=d;size=s;name=n;path=p;mime=m;uri=u;}boolean video(){return mime!=null&&mime.startsWith("video/");}}
+ @Override public void onCreate(Bundle b){super.onCreate(b);prefs=getSharedPreferences("gallery",0);build();request();}@Override protected void onDestroy(){pool.shutdownNow();super.onDestroy();}
+ int dp(int n){return(int)(n*getResources().getDisplayMetrics().density+.5f);} TextView tv(String s,int sp,boolean bold){TextView v=new TextView(this);v.setText(s);v.setTextSize(sp);v.setTextColor(Color.WHITE);v.setTypeface(null,bold?1:0);return v;} GradientDrawable bg(int color,int radius){GradientDrawable g=new GradientDrawable();g.setColor(color);g.setCornerRadius(dp(radius));return g;}
+ Button button(String s){Button b=new Button(this);b.setText(s);b.setAllCaps(false);b.setTextColor(Color.WHITE);b.setTextSize(13);b.setBackgroundTintList(android.content.res.ColorStateList.valueOf(CARD));b.setMinHeight(0);b.setPadding(dp(13),dp(8),dp(13),dp(8));return b;}
+ void build(){getWindow().setStatusBarColor(BG);getWindow().setNavigationBarColor(BG);root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);root.setPadding(dp(14),dp(12),dp(14),dp(8));root.setBackgroundColor(BG);LinearLayout head=new LinearLayout(this);head.setGravity(Gravity.CENTER_VERTICAL);LinearLayout titles=new LinearLayout(this);titles.setOrientation(LinearLayout.VERTICAL);TextView title=tv("Smart Gallery",29,true);titles.addView(title);TextView sub=tv("Dina bilder. Snabbt, privat och organiserat.",13,false);sub.setTextColor(ACC);titles.addView(sub);head.addView(titles,new LinearLayout.LayoutParams(0,-2,1));Button sort=button("⇅ Nyast");sort.setOnClickListener(v->{newest=!newest;sort.setText(newest?"⇅ Nyast":"⇅ Äldst");applyFilter();});head.addView(sort);root.addView(head);
+  hero=tv("Förbereder ditt bibliotek…",15,true);hero.setPadding(dp(14),dp(12),dp(14),dp(12));hero.setBackground(bg(CARD,16));LinearLayout.LayoutParams hp=new LinearLayout.LayoutParams(-1,-2);hp.setMargins(0,dp(12),0,dp(10));root.addView(hero,hp);
+  search=new EditText(this);search.setHint("🔎 Sök bild, video eller album");search.setSingleLine(true);search.setTextColor(Color.WHITE);search.setHintTextColor(MUT);search.setBackground(bg(CARD,15));search.setPadding(dp(14),dp(11),dp(14),dp(11));root.addView(search,new LinearLayout.LayoutParams(-1,-2));search.setOnEditorActionListener((v,a,e)->{applyFilter();return true;});
+  HorizontalScrollView hs=new HorizontalScrollView(this);hs.setHorizontalScrollBarEnabled(false);chips=new LinearLayout(this);chips.setOrientation(LinearLayout.HORIZONTAL);String[]modes={"Alla","Kamera","Skärmbilder","Videor","Favoriter","Stora filer","Dubbletter","Album"};for(String m:modes){Button b=button(icon(m)+m);b.setOnClickListener(v->{filter=m;applyFilter();});chips.addView(b);}hs.addView(chips);LinearLayout.LayoutParams cp=new LinearLayout.LayoutParams(-1,-2);cp.setMargins(0,dp(8),0,0);root.addView(hs,cp);
+  info=tv("Läser bilder…",13,false);info.setPadding(dp(3),dp(7),dp(3),dp(7));info.setTextColor(MUT);root.addView(info);grid=new GridView(this);grid.setNumColumns(getResources().getConfiguration().smallestScreenWidthDp>=600?6:3);grid.setHorizontalSpacing(dp(3));grid.setVerticalSpacing(dp(3));grid.setStretchMode(GridView.STRETCH_COLUMN_WIDTH);adapter=new GalleryAdapter();grid.setAdapter(adapter);root.addView(grid,new LinearLayout.LayoutParams(-1,0,1));grid.setOnItemClickListener((p,v,pos,id)->open(shown.get(pos)));grid.setOnItemLongClickListener((p,v,pos,id)->{details(shown.get(pos));return true;});
+  LinearLayout bar=new LinearLayout(this);bar.setGravity(Gravity.CENTER);String[]bn={"↻ Uppdatera","🧹 Städa","📁 Album"};for(String x:bn){Button b=button(x);if(x.contains("Uppdatera"))b.setOnClickListener(v->load());else if(x.contains("Städa"))b.setOnClickListener(v->cleanPage());else b.setOnClickListener(v->{filter="Album";applyFilter();});bar.addView(b,new LinearLayout.LayoutParams(0,-2,1));}root.addView(bar);setContentView(root);}
+ String icon(String m){if(m.equals("Alla"))return"▦ ";if(m.equals("Kamera"))return"📷 ";if(m.equals("Skärmbilder"))return"▣ ";if(m.equals("Videor"))return"▶ ";if(m.equals("Favoriter"))return"★ ";if(m.equals("Stora filer"))return"◉ ";if(m.equals("Dubbletter"))return"⧉ ";return"📁 ";}
+ void request(){ArrayList<String>q=new ArrayList<>();if(Build.VERSION.SDK_INT>=33){if(checkSelfPermission(Manifest.permission.READ_MEDIA_IMAGES)!=PackageManager.PERMISSION_GRANTED)q.add(Manifest.permission.READ_MEDIA_IMAGES);if(checkSelfPermission(Manifest.permission.READ_MEDIA_VIDEO)!=PackageManager.PERMISSION_GRANTED)q.add(Manifest.permission.READ_MEDIA_VIDEO);}else if(checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE)!=PackageManager.PERMISSION_GRANTED)q.add(Manifest.permission.READ_EXTERNAL_STORAGE);if(q.isEmpty())load();else requestPermissions(q.toArray(new String[0]),REQ);}@Override public void onRequestPermissionsResult(int r,String[]p,int[]g){super.onRequestPermissionsResult(r,p,g);if(r==REQ)load();}
+ void load(){info.setText("Läser mediebibliotek…");pool.execute(()->{ArrayList<Item>list=new ArrayList<>();Uri u=MediaStore.Files.getContentUri("external");ArrayList<String>cols=new ArrayList<>(Arrays.asList(MediaStore.Files.FileColumns._ID,MediaStore.Files.FileColumns.DISPLAY_NAME,MediaStore.Files.FileColumns.MIME_TYPE,MediaStore.Files.FileColumns.SIZE,MediaStore.Files.FileColumns.DATE_MODIFIED,MediaStore.Files.FileColumns.MEDIA_TYPE));cols.add(Build.VERSION.SDK_INT>=29?MediaStore.Files.FileColumns.RELATIVE_PATH:MediaStore.Files.FileColumns.DATA);String sel=MediaStore.Files.FileColumns.MEDIA_TYPE+"=? OR "+MediaStore.Files.FileColumns.MEDIA_TYPE+"=?";try(Cursor c=getContentResolver().query(u,cols.toArray(new String[0]),sel,new String[]{"1","3"},MediaStore.Files.FileColumns.DATE_MODIFIED+" DESC")){if(c!=null){int id=c.getColumnIndexOrThrow("_id"),nm=c.getColumnIndexOrThrow("_display_name"),mi=c.getColumnIndexOrThrow("mime_type"),sz=c.getColumnIndexOrThrow("_size"),dt=c.getColumnIndexOrThrow("date_modified"),mt=c.getColumnIndexOrThrow("media_type"),pa=c.getColumnIndexOrThrow(Build.VERSION.SDK_INT>=29?"relative_path":"_data");while(c.moveToNext()){long x=c.getLong(id);int type=c.getInt(mt);Uri item=type==3?Uri.withAppendedPath(MediaStore.Video.Media.EXTERNAL_CONTENT_URI,""+x):Uri.withAppendedPath(MediaStore.Images.Media.EXTERNAL_CONTENT_URI,""+x);list.add(new Item(x,c.getLong(dt),c.getLong(sz),c.getString(nm),c.getString(pa),c.getString(mi),item));}}}catch(Exception e){}runOnUiThread(()->{all=list;updateHero();applyFilter();});});}
+ void updateHero(){int pics=0,vid=0,fav=0;long bytes=0;HashSet<String>albums=new HashSet<>();for(Item i:all){if(i.video())vid++;else pics++;if(prefs.getBoolean("fav_"+i.uri,false))fav++;bytes+=i.size;if(i.path!=null)albums.add(i.path);}hero.setText("📸 "+pics+" bilder   •   ▶ "+vid+" videor\n📁 "+albums.size()+" mappar   •   ★ "+fav+" favoriter   •   "+human(bytes));}
+ void applyFilter(){String q=search.getText().toString().trim().toLowerCase(Locale.ROOT);shown.clear();if(filter.equals("Album")){showAlbums(q);return;}HashMap<String,Integer>dup=new HashMap<>();for(Item i:all){String k=i.size+"|"+(i.name==null?"":i.name.toLowerCase(Locale.ROOT));dup.put(k,dup.getOrDefault(k,0)+1);}for(Item i:all){String text=((i.name==null?"":i.name)+" "+(i.path==null?"":i.path)).toLowerCase(Locale.ROOT);if(!q.isEmpty()&&!text.contains(q))continue;boolean ok=true;if(filter.equals("Kamera"))ok=text.contains("dcim/camera");else if(filter.equals("Skärmbilder"))ok=text.contains("screenshot");else if(filter.equals("Videor"))ok=i.video();else if(filter.equals("Favoriter"))ok=prefs.getBoolean("fav_"+i.uri,false);else if(filter.equals("Stora filer"))ok=i.size>=20L*1024*1024;else if(filter.equals("Dubbletter")){String k=i.size+"|"+(i.name==null?"":i.name.toLowerCase(Locale.ROOT));ok=dup.getOrDefault(k,0)>1;}if(ok)shown.add(i);}Collections.sort(shown,(a,b)->newest?Long.compare(b.date,a.date):Long.compare(a.date,b.date));adapter.notifyDataSetChanged();info.setText(icon(filter)+filter+"  •  "+shown.size()+" objekt"+(filter.equals("Dubbletter")?"  •  granska innan radering":""));}
+ void showAlbums(String q){LinkedHashMap<String,Integer>m=new LinkedHashMap<>();for(Item i:all){String p=i.path==null?"Okänd mapp":i.path;String[]parts=p.replace('\\','/').split("/");String name=parts.length>0?parts[Math.max(0,parts.length-1)]:p;if(name.isEmpty()&&parts.length>1)name=parts[parts.length-2];if(!q.isEmpty()&&!name.toLowerCase(Locale.ROOT).contains(q))continue;m.put(name,m.getOrDefault(name,0)+1);}String[]arr=new String[m.size()];int k=0;for(Map.Entry<String,Integer>e:m.entrySet())arr[k++]=e.getKey()+"   •   "+e.getValue()+" objekt";new AlertDialog.Builder(this).setTitle("📁 Album").setItems(arr,(d,w)->{String album=arr[w].split("   •   ")[0];search.setText(album);filter="Alla";applyFilter();}).setPositiveButton("Stäng",null).show();info.setText("📁 Album  •  "+m.size()+" mappar");adapter.notifyDataSetChanged();}
+ void open(Item i){try{Intent x=new Intent(Intent.ACTION_VIEW);x.setDataAndType(i.uri,i.mime);x.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);startActivity(x);}catch(Exception e){Toast.makeText(this,"Kan inte öppna filen",Toast.LENGTH_SHORT).show();}}
+ void details(Item i){boolean f=prefs.getBoolean("fav_"+i.uri,false);String date=new SimpleDateFormat("yyyy-MM-dd HH:mm",Locale.getDefault()).format(new Date(i.date*1000));new AlertDialog.Builder(this).setTitle(i.name).setMessage((i.video()?"▶ Video":"📸 Bild")+"\n"+human(i.size)+" • "+date+"\n"+(i.path==null?"":i.path)).setPositiveButton(f?"★ Ta bort favorit":"☆ Lägg till favorit",(d,w)->{prefs.edit().putBoolean("fav_"+i.uri,!f).apply();updateHero();applyFilter();}).setNeutralButton("Öppna",(d,w)->open(i)).setNegativeButton("Stäng",null).show();}
+ void cleanPage(){long large=0;int screenshots=0,dups=0;HashMap<String,Integer>m=new HashMap<>();for(Item i:all){if(i.size>=20L*1024*1024)large+=i.size;String t=((i.name==null?"":i.name)+" "+(i.path==null?"":i.path)).toLowerCase(Locale.ROOT);if(t.contains("screenshot"))screenshots++;String k=i.size+"|"+(i.name==null?"":i.name.toLowerCase(Locale.ROOT));m.put(k,m.getOrDefault(k,0)+1);}for(int n:m.values())if(n>1)dups+=n;final long l=large;new AlertDialog.Builder(this).setTitle("🧹 Smart städning").setMessage("Skärmbilder: "+screenshots+"\nStora filer ≥20 MB: "+human(l)+"\nMöjliga dubbletter: "+dups+"\n\nIngenting raderas automatiskt. Du granskar alltid själv först.").setPositiveButton("Stora filer",(x,w)->{filter="Stora filer";applyFilter();}).setNeutralButton("Dubbletter",(x,w)->{filter="Dubbletter";applyFilter();}).setNegativeButton("Stäng",null).show();}
+ String human(long b){if(b<1048576)return Math.max(0,b/1024)+" KB";if(b<1073741824L)return String.format(Locale.ROOT,"%.1f MB",b/1048576.0);return String.format(Locale.ROOT,"%.2f GB",b/1073741824.0);}
+ class GalleryAdapter extends BaseAdapter{public int getCount(){return shown.size();}public Object getItem(int p){return shown.get(p);}public long getItemId(int p){return shown.get(p).id;}public View getView(int p,View old,ViewGroup parent){FrameLayout box=old instanceof FrameLayout?(FrameLayout)old:new FrameLayout(MainActivity.this);box.removeAllViews();int cols=getResources().getConfiguration().smallestScreenWidthDp>=600?6:3;int h=(getResources().getDisplayMetrics().widthPixels-dp(34))/cols;box.setLayoutParams(new GridView.LayoutParams(-1,h));ImageView im=new ImageView(MainActivity.this);im.setScaleType(ImageView.ScaleType.CENTER_CROP);im.setBackgroundColor(CARD);box.addView(im,new FrameLayout.LayoutParams(-1,-1));Item item=shown.get(p);im.setTag(item.uri.toString());if(item.video()){TextView badge=tv("▶",14,true);badge.setGravity(Gravity.CENTER);badge.setBackground(bg(Color.argb(185,0,0,0),20));FrameLayout.LayoutParams bp=new FrameLayout.LayoutParams(dp(32),dp(32),Gravity.BOTTOM|Gravity.RIGHT);bp.setMargins(0,0,dp(6),dp(6));box.addView(badge,bp);}if(prefs.getBoolean("fav_"+item.uri,false)){TextView star=tv("★",18,true);star.setTextColor(Color.WHITE);FrameLayout.LayoutParams sp=new FrameLayout.LayoutParams(dp(30),dp(30),Gravity.TOP|Gravity.RIGHT);box.addView(star,sp);}pool.execute(()->{Bitmap b=null;try{if(Build.VERSION.SDK_INT>=29)b=getContentResolver().loadThumbnail(item.uri,new android.util.Size(420,420),null);else{java.io.InputStream in=getContentResolver().openInputStream(item.uri);if(in!=null){BitmapFactory.Options o=new BitmapFactory.Options();o.inSampleSize=4;b=BitmapFactory.decodeStream(in,null,o);in.close();}}}catch(Exception e){}Bitmap bm=b;runOnUiThread(()->{if(item.uri.toString().equals(im.getTag())&&bm!=null)im.setImageBitmap(bm);});});return box;}}
 }
