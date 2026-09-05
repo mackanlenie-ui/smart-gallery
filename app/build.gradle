@@ -2,7 +2,7 @@ plugins { id 'com.android.application' }
 android {
  namespace 'se.smartgallery.app'
  compileSdk 35
- defaultConfig { applicationId 'se.smartgallery.app'; minSdk 26; targetSdk 35; versionCode 19; versionName '1.9' }
+ defaultConfig { applicationId 'se.smartgallery.app'; minSdk 26; targetSdk 35; versionCode 20; versionName '2.0' }
  compileOptions { sourceCompatibility JavaVersion.VERSION_11; targetCompatibility JavaVersion.VERSION_11 }
  aaptOptions { noCompress 'tflite' }
 }
