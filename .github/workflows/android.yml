@@ -25,16 +25,16 @@ jobs:
         run: gradle --no-daemon :app:assembleDebug
       - name: Prepare artifacts
         run: |
-          cp app/build/outputs/apk/debug/app-debug.apk Smart-Gallery-1.8-unsigned.apk
+          cp app/build/outputs/apk/debug/app-debug.apk Smart-Gallery-1.9-unsigned.apk
           BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
           mkdir -p apksigner-tool/lib
           cp "$BT/apksigner" apksigner-tool/
           cp "$BT/lib/apksigner.jar" apksigner-tool/lib/
       - uses: actions/upload-artifact@v4
         with:
-          name: Smart-Gallery-1.8-unsigned
-          path: Smart-Gallery-1.8-unsigned.apk
+          name: Smart-Gallery-1.9-unsigned
+          path: Smart-Gallery-1.9-unsigned.apk
       - uses: actions/upload-artifact@v4
         with:
-          name: apksigner-tool-smart-gallery-1.8
+          name: apksigner-tool-smart-gallery-1.9
           path: apksigner-tool
