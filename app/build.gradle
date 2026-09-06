@@ -1,12 +1,14 @@
 plugins { id 'com.android.application' }
+
 android {
- namespace 'se.smartgallery.app'
- compileSdk 35
- defaultConfig { applicationId 'se.smartgallery.app'; minSdk 26; targetSdk 35; versionCode 24; versionName '2.2' }
- compileOptions { sourceCompatibility JavaVersion.VERSION_11; targetCompatibility JavaVersion.VERSION_11 }
- aaptOptions { noCompress 'tflite' }
-}
-dependencies {
- implementation 'com.google.mlkit:face-detection:16.1.7'
- implementation 'org.tensorflow:tensorflow-lite:2.14.0'
+    namespace 'se.minekonomi.app'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'se.minekonomi.app'
+        minSdk 26
+        targetSdk 35
+        versionCode 1
+        versionName '1.0'
+    }
 }
