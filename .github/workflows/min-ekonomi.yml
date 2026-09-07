@@ -1,0 +1,39 @@
+name: Build Min Ekonomi APK
+on:
+  push:
+    branches: [ build-min-ekonomi-v1 ]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Apply v1.7 features
+        run: python .github/v17_patch.py
+      - name: Apply v1.8 features
+        run: python .github/v18_patch.py
+      - name: Build APK
+        run: gradle --no-daemon :app:assembleDebug
+      - name: Prepare APK
+        run: cp app/build/outputs/apk/debug/app-debug.apk Min-Ekonomi-v1.8-unsigned.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Min-Ekonomi-v1.8-unsigned
+          path: Min-Ekonomi-v1.8-unsigned.apk
+      - name: Prepare apksigner tool
+        run: |
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          mkdir -p signer-tool/lib
+          cp "$BT/apksigner" signer-tool/
+          cp "$BT/lib/apksigner.jar" signer-tool/lib/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: apksigner-tool
+          path: signer-tool
