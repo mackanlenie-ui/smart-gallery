@@ -25,6 +25,11 @@ jobs:
         run: python .github/v19_patch.py
       - name: Apply v1.9.1 planned purchase fix
         run: python .github/v191_patch.py
+      - name: Upload patched source
+        uses: actions/upload-artifact@v4
+        with:
+          name: min-ekonomi-patched-source
+          path: app/src/main/java/se/minekonomi/app/MainActivity.java
       - name: Build APK
         run: gradle --no-daemon :app:assembleDebug
       - name: Prepare APK
