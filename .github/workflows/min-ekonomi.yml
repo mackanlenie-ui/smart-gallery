@@ -21,14 +21,16 @@ jobs:
         run: python .github/v18_patch.py
       - name: Apply v1.8.1 biometric fix
         run: python .github/v181_patch.py
+      - name: Apply v1.9 improvements
+        run: python .github/v19_patch.py
       - name: Build APK
         run: gradle --no-daemon :app:assembleDebug
       - name: Prepare APK
-        run: cp app/build/outputs/apk/debug/app-debug.apk Min-Ekonomi-v1.8.2-unsigned.apk
+        run: cp app/build/outputs/apk/debug/app-debug.apk Min-Ekonomi-v1.9-unsigned.apk
       - uses: actions/upload-artifact@v4
         with:
-          name: Min-Ekonomi-v1.8.2-unsigned
-          path: Min-Ekonomi-v1.8.2-unsigned.apk
+          name: Min-Ekonomi-v1.9-unsigned
+          path: Min-Ekonomi-v1.9-unsigned.apk
       - name: Prepare apksigner tool
         run: |
           BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
