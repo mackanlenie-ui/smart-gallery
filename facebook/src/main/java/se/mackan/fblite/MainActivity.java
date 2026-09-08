@@ -22,6 +22,7 @@ public class MainActivity extends Activity {
     private ProgressBar progress;
     private static final String HOME = "https://m.facebook.com/";
     private static final String MESSAGES_FALLBACK = "https://mbasic.facebook.com/messages/";
+    private static final String CHROME_UA = "Mozilla/5.0 (Linux; Android 16; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Mobile Safari/537.36";
 
     private static final String FILTER_JS = "(function(){" +
       "if(window.__fbAdFilterV13)return;window.__fbAdFilterV13=true;"+
@@ -75,12 +76,24 @@ public class MainActivity extends Activity {
     @Override public void onCreate(Bundle b){ super.onCreate(b);
         FrameLayout root=new FrameLayout(this); web=new WebView(this); progress=new ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal);
         root.addView(web,new FrameLayout.LayoutParams(-1,-1)); FrameLayout.LayoutParams p=new FrameLayout.LayoutParams(-1,6); root.addView(progress,p); setContentView(root);
-        WebSettings s=web.getSettings(); s.setJavaScriptEnabled(true); s.setDomStorageEnabled(true); s.setDatabaseEnabled(true); s.setMediaPlaybackRequiresUserGesture(false); s.setSupportZoom(false); s.setUserAgentString(s.getUserAgentString()+" FBWebWrapper/1.5");
-        CookieManager.getInstance().setAcceptCookie(true); CookieManager.getInstance().setAcceptThirdPartyCookies(web,true);
+        WebSettings s=web.getSettings();
+        s.setJavaScriptEnabled(true);
+        s.setDomStorageEnabled(true);
+        s.setDatabaseEnabled(true);
+        s.setMediaPlaybackRequiresUserGesture(false);
+        s.setSupportZoom(false);
+        s.setCacheMode(WebSettings.LOAD_DEFAULT);
+        s.setUserAgentString(CHROME_UA);
+
+        CookieManager cm=CookieManager.getInstance();
+        cm.setAcceptCookie(true);
+        cm.setAcceptThirdPartyCookies(web,true);
+
         web.setWebChromeClient(new WebChromeClient(){@Override public void onProgressChanged(WebView v,int n){progress.setProgress(n);progress.setVisibility(n<100?View.VISIBLE:View.GONE);}});
         web.setWebViewClient(new WebViewClient(){
             @Override public void onPageStarted(WebView v,String u,Bitmap f){progress.setVisibility(View.VISIBLE);}
             @Override public void onPageFinished(WebView v,String u){
+                CookieManager.getInstance().flush();
                 if (u==null || u.equals("about:blank")) { v.postDelayed(() -> v.loadUrl(HOME), 250); return; }
                 v.evaluateJavascript(FILTER_JS,null);
             }
@@ -90,6 +103,22 @@ public class MainActivity extends Activity {
         });
         web.loadUrl(HOME);
     }
-    @Override protected void onResume(){super.onResume();if(web!=null){String u=web.getUrl();if(u==null||u.equals("about:blank"))web.loadUrl(HOME);}}
+
+    @Override protected void onPause(){
+        CookieManager.getInstance().flush();
+        if(web!=null) web.onPause();
+        super.onPause();
+    }
+
+    @Override protected void onResume(){
+        super.onResume();
+        if(web!=null){web.onResume();String u=web.getUrl();if(u==null||u.equals("about:blank"))web.loadUrl(HOME);}
+    }
+
+    @Override protected void onDestroy(){
+        CookieManager.getInstance().flush();
+        super.onDestroy();
+    }
+
     @Override public void onBackPressed(){if(web!=null&&web.canGoBack())web.goBack();else super.onBackPressed();}
 }
