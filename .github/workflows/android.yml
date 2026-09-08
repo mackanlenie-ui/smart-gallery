@@ -24,17 +24,19 @@ jobs:
         run: python3 facebook/v211_patch.py
       - name: Apply Facebook v2.12 patch
         run: python3 facebook/v212_patch.py
+      - name: Apply Facebook v2.13 patch
+        run: python3 facebook/v213_patch.py
       - name: Build APKs
         run: gradle --no-daemon clean :facebook:assembleDebug :youtube:assembleDebug
       - name: Prepare APKs
         run: |
-          cp facebook/build/outputs/apk/debug/facebook-debug.apk Facebook-Lite-AdFilter-v2.12.apk
+          cp facebook/build/outputs/apk/debug/facebook-debug.apk Facebook-Lite-AdFilter-v2.13.apk
           cp youtube/build/outputs/apk/debug/youtube-debug.apk YouTube-Lite-AdFilter-v1.0.apk
           ls -lh *.apk
       - uses: actions/upload-artifact@v4
         with:
           name: Social-Wrappers-APKs
           path: |
-            Facebook-Lite-AdFilter-v2.12.apk
+            Facebook-Lite-AdFilter-v2.13.apk
             YouTube-Lite-AdFilter-v1.0.apk
           retention-days: 30
