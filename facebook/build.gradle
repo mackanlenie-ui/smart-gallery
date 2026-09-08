@@ -2,6 +2,15 @@ plugins { id 'com.android.application' }
 android {
     namespace 'se.mackan.fblite'
     compileSdk 35
-    defaultConfig { applicationId 'se.mackan.fblite'; minSdk 26; targetSdk 35; versionCode 2; versionName '1.1' }
+    signingConfigs {
+        stableDebug {
+            storeFile rootProject.file('adfilter-stable.jks')
+            storePassword 'adfilter123'
+            keyAlias 'adfilter'
+            keyPassword 'adfilter123'
+        }
+    }
+    defaultConfig { applicationId 'se.mackan.fblite'; minSdk 26; targetSdk 35; versionCode 3; versionName '1.2' }
+    buildTypes { debug { signingConfig signingConfigs.stableDebug } }
     compileOptions { sourceCompatibility JavaVersion.VERSION_11; targetCompatibility JavaVersion.VERSION_11 }
 }
