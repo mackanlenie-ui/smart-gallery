@@ -2,7 +2,7 @@ plugins { id 'com.android.application' }
 android {
     namespace 'se.mackan.fblite'
     compileSdk 35
-    defaultConfig { applicationId 'se.mackan.fblite'; minSdk 26; targetSdk 35; versionCode 23; versionName '2.12' }
+    defaultConfig { applicationId 'se.mackan.fblite'; minSdk 26; targetSdk 35; versionCode 24; versionName '2.13' }
     compileOptions { sourceCompatibility JavaVersion.VERSION_11; targetCompatibility JavaVersion.VERSION_11 }
 }
 dependencies {
