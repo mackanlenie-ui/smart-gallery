@@ -20,17 +20,20 @@ public class MainActivity extends Activity {
     private ProgressBar progress;
 
     private static final String FILTER_JS = "(function(){" +
-      "if(window.__fbAdFilterV11)return;window.__fbAdFilterV11=true;"+
+      "if(window.__fbAdFilterV12)return;window.__fbAdFilterV12=true;"+
       "var css='[aria-label*=Sponsored i],[aria-label*=Sponsrad i]{display:none!important}';"+
-      "var s=document.getElementById('adfilter-style-v11');if(!s){s=document.createElement('style');s.id='adfilter-style-v11';s.innerHTML=css;document.documentElement.appendChild(s);}"+
-      "function isMarkerText(t){t=(t||'').replace(/\\s+/g,' ').trim().toLowerCase();return t==='ad'||t==='sponsored'||t==='sponsrad';}"+
+      "var s=document.getElementById('adfilter-style-v12');if(!s){s=document.createElement('style');s.id='adfilter-style-v12';s.innerHTML=css;document.documentElement.appendChild(s);}"+
+      "function norm(t){return (t||'').replace(/\\s+/g,' ').trim().toLowerCase();}"+
+      "function isMarkerText(t){t=norm(t);return t==='ad'||t==='sponsored'||t==='sponsrad';}"+
       "function hideCard(marker){"+
         "var card=marker.closest('[role=article],article');"+
         "if(!card){var n=marker,best=null;for(var i=0;i<9&&n&&n!==document.body;i++,n=n.parentElement){var r=n.getBoundingClientRect();var txt=(n.innerText||'');if(r.width>window.innerWidth*0.72&&r.height>80&&r.height<window.innerHeight*3.2&&txt.length<9000)best=n;}card=best;}"+
         "if(card&&card!==document.body&&card!==document.documentElement){card.setAttribute('data-adfilter-hidden','1');card.style.setProperty('display','none','important');}"+
       "}"+
+      "function hidePromoElement(e){if(!e||e===document.body||e===document.documentElement)return;var n=e;for(var i=0;i<7&&n&&n!==document.body;i++,n=n.parentElement){var r=n.getBoundingClientRect();var pos=getComputedStyle(n).position;if((pos==='fixed'||pos==='sticky')&&r.width>window.innerWidth*0.75&&r.height<180){n.style.setProperty('display','none','important');return;}}e.style.setProperty('display','none','important');}"+
+      "function cleanPromos(root){var nodes=root.querySelectorAll?root.querySelectorAll('a,button,div,span'):[];for(var i=0;i<nodes.length;i++){var e=nodes[i];if(e.children.length>3)continue;var t=norm(e.innerText||e.textContent||'');if(t==='open app'||t==='öppna app'||t.indexOf('skaffa facebook för android')>=0||t.indexOf('get facebook for android')>=0){hidePromoElement(e);}}}"+
       "function clean(root){"+
-        "root=root||document;"+
+        "root=root||document;cleanPromos(root);"+
         "var nodes=root.querySelectorAll?root.querySelectorAll('span,div,a'):[];"+
         "for(var i=0;i<nodes.length;i++){var e=nodes[i];if(e.children.length>2)continue;var t=e.innerText||e.textContent||'';if(isMarkerText(t))hideCard(e);}"+
         "var arts=root.querySelectorAll?root.querySelectorAll('[role=article],article'):[];"+
@@ -46,7 +49,7 @@ public class MainActivity extends Activity {
     @Override public void onCreate(Bundle b){ super.onCreate(b);
         FrameLayout root=new FrameLayout(this); web=new WebView(this); progress=new ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal);
         root.addView(web,new FrameLayout.LayoutParams(-1,-1)); FrameLayout.LayoutParams p=new FrameLayout.LayoutParams(-1,6); root.addView(progress,p); setContentView(root);
-        WebSettings s=web.getSettings(); s.setJavaScriptEnabled(true); s.setDomStorageEnabled(true); s.setDatabaseEnabled(true); s.setMediaPlaybackRequiresUserGesture(false); s.setSupportZoom(false); s.setUserAgentString(s.getUserAgentString()+" FBWebWrapper/1.1");
+        WebSettings s=web.getSettings(); s.setJavaScriptEnabled(true); s.setDomStorageEnabled(true); s.setDatabaseEnabled(true); s.setMediaPlaybackRequiresUserGesture(false); s.setSupportZoom(false); s.setUserAgentString(s.getUserAgentString()+" FBWebWrapper/1.2");
         CookieManager.getInstance().setAcceptCookie(true); CookieManager.getInstance().setAcceptThirdPartyCookies(web,true);
         web.setWebChromeClient(new WebChromeClient(){@Override public void onProgressChanged(WebView v,int n){progress.setProgress(n);progress.setVisibility(n<100?View.VISIBLE:View.GONE);}});
         web.setWebViewClient(new WebViewClient(){
