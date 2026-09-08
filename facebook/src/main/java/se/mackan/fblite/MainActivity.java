@@ -3,11 +3,16 @@ package se.mackan.fblite;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.Color;
+import android.net.ConnectivityManager;
+import android.net.NetworkCapabilities;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.view.Gravity;
 import android.view.MotionEvent;
@@ -31,111 +36,56 @@ public class MainActivity extends Activity {
     private TextView gear;
     private SharedPreferences prefs;
     private ValueCallback<Uri[]> fileCallback;
-    private static final int FILE_PICKER = 2001;
-    private static final String HOME = "https://m.facebook.com/";
-    private long lastMessengerAttempt = 0L;
+    private static final int FILE_PICKER=2001;
+    private static final String HOME="https://m.facebook.com/";
+    private long lastMessengerAttempt=0L;
     private float downY;
-    private boolean pullReady = false;
+    private boolean pullReady=false;
 
-    private static final String FILTER_JS = "(function(){"+
-      "if(window.__fbAdFilterV23)return;window.__fbAdFilterV23=true;"+
-      "var css='[aria-label*=Sponsored i],[aria-label*=Sponsrad i],[aria-label*=Sponsrat i]{display:none!important}';"+
-      "var s=document.getElementById('adfilter-style-v23');if(!s){s=document.createElement('style');s.id='adfilter-style-v23';s.innerHTML=css;document.documentElement.appendChild(s);}"+
-      "function norm(t){return (t||'').replace(/\\s+/g,' ').trim().toLowerCase();}"+
-      "function isMarkerText(t){t=norm(t);return t==='ad'||t==='sponsored'||t==='sponsrad'||t==='sponsrat';}"+
-      "function hideCard(marker){var card=marker.closest('[role=article],article');if(!card){var n=marker,best=null;for(var i=0;i<9&&n&&n!==document.body;i++,n=n.parentElement){var r=n.getBoundingClientRect(),txt=n.innerText||'';if(r.width>innerWidth*.72&&r.height>80&&r.height<innerHeight*3.2&&txt.length<9000)best=n;}card=best;}if(card&&card!==document.body&&card!==document.documentElement){card.setAttribute('data-adfilter-hidden','1');card.style.setProperty('display','none','important');}}"+
-      "function hidePromoLeaf(e){if(!e||e===document.body||e===document.documentElement)return;var target=e.closest('a,button')||e,n=target;for(var i=0;i<5&&n&&n!==document.body;i++,n=n.parentElement){var r=n.getBoundingClientRect(),cs=getComputedStyle(n);if(r.height>0&&r.height<=180&&r.width>innerWidth*.68&&r.bottom>innerHeight-190&&(cs.position==='fixed'||cs.position==='sticky')){n.style.setProperty('display','none','important');return;}}target.style.setProperty('display','none','important');}"+
-      "function hideAppModal(root){var all=root.querySelectorAll?root.querySelectorAll('[role=dialog],div'):[];for(var i=0;i<all.length;i++){var e=all[i],t=norm(e.innerText||e.textContent||'');if(t.indexOf('facebook är bättre i appen')>=0||t.indexOf('facebook is better in the app')>=0){var d=e.closest('[role=dialog]')||e,r=d.getBoundingClientRect();if(d!==document.body&&d!==document.documentElement&&r.height>120&&r.height<innerHeight*.95)d.style.setProperty('display','none','important');}}}"+
-      "function cleanPromos(root){var nodes=root.querySelectorAll?root.querySelectorAll('a,button,span,div'):[];for(var i=0;i<nodes.length;i++){var e=nodes[i],t=norm(e.innerText||e.textContent||'');if(t==='open app'||t==='öppna appen'||t==='öppna app'||t==='skaffa appen'||t==='get app'){hidePromoLeaf(e);continue;}if(e.children.length<=2&&(t==='skaffa facebook för android och surfa snabbare.'||t==='skaffa facebook för android och surfa snabbare'||t==='get facebook for android and browse faster.'||t==='get facebook for android and browse faster'))hidePromoLeaf(e);}hideAppModal(root);}"+
-      "function clean(root){root=root||document;cleanPromos(root);var nodes=root.querySelectorAll?root.querySelectorAll('span,div,a'):[];for(var i=0;i<nodes.length;i++){var e=nodes[i];if(e.children.length>2)continue;if(isMarkerText(e.innerText||e.textContent||''))hideCard(e);}var arts=root.querySelectorAll?root.querySelectorAll('[role=article],article'):[];for(var j=0;j<arts.length;j++){var a=arts[j];if(a.getAttribute('data-adfilter-hidden'))continue;var lines=(a.innerText||'').split(/\\n+/).map(function(x){return x.trim().toLowerCase();}).filter(Boolean).slice(0,14);if(lines.indexOf('ad')>=0||lines.indexOf('sponsored')>=0||lines.indexOf('sponsrad')>=0||lines.indexOf('sponsrat')>=0){a.setAttribute('data-adfilter-hidden','1');a.style.setProperty('display','none','important');}}}"+
-      "function isMsgHref(h){h=(h||'').toLowerCase();return h.indexOf('fb-messenger://')===0||h.indexOf('messenger://')===0||h.indexOf('facebook.com/messages')>=0||h.indexOf('/messages')>=0||h.indexOf('messenger.com')>=0;}"+
-      "document.addEventListener('click',function(ev){var a=ev.target&&ev.target.closest?ev.target.closest('a'):null;if(a&&isMsgHref(a.href)){ev.preventDefault();ev.stopPropagation();location.href='fbwrapper://open-messenger';return;}var el=ev.target&&ev.target.closest?ev.target.closest('a,button,[role=button]'):null;if(el){var t=norm(el.innerText||el.textContent||el.getAttribute('aria-label')||'');if(t==='messenger'||t==='meddelanden'||t==='messages'){ev.preventDefault();ev.stopPropagation();location.href='fbwrapper://open-messenger';}}},true);"+
-      "function detectMessengerGate(){var t=norm(document.body&&document.body.innerText||'');if(t.indexOf('skaffa messenger-appen')>=0||t.indexOf('switch over to messenger')>=0||t.indexOf('get messenger to read and respond')>=0||t.indexOf('hämta messenger')>=0)location.href='fbwrapper://open-messenger';}"+
-      "clean(document);detectMessengerGate();var mo=new MutationObserver(function(ms){for(var i=0;i<ms.length;i++){for(var j=0;j<ms[i].addedNodes.length;j++){var n=ms[i].addedNodes[j];if(n&&n.nodeType===1)clean(n);}}detectMessengerGate();});mo.observe(document.documentElement,{childList:true,subtree:true});setInterval(function(){clean(document);detectMessengerGate();},900);})();";
+    private static final String FILTER_JS="(function(){if(window.__fbAdFilterV24)return;window.__fbAdFilterV24=true;"+
+      "var css='[aria-label*=Sponsored i],[aria-label*=Sponsrad i],[aria-label*=Sponsrat i],[data-adfilter-hidden=\\\"1\\\"]{display:none!important;margin:0!important;padding:0!important;height:0!important;min-height:0!important}';"+
+      "var s=document.getElementById('adfilter-style-v24');if(!s){s=document.createElement('style');s.id='adfilter-style-v24';s.innerHTML=css;document.documentElement.appendChild(s);}"+
+      "function norm(t){return(t||'').replace(/\\s+/g,' ').trim().toLowerCase()}function marker(t){t=norm(t);return t==='ad'||t==='sponsored'||t==='sponsrad'||t==='sponsrat'}"+
+      "function hideCard(e){var c=e.closest('[role=article],article');if(!c){var n=e,b=null;for(var i=0;i<9&&n&&n!==document.body;i++,n=n.parentElement){var r=n.getBoundingClientRect(),x=n.innerText||'';if(r.width>innerWidth*.72&&r.height>70&&r.height<innerHeight*3.2&&x.length<9000)b=n}c=b}if(c&&c!==document.body&&c!==document.documentElement)c.setAttribute('data-adfilter-hidden','1')}"+
+      "function hidePromo(e){if(!e||e===document.body)return;var t=e.closest('a,button')||e,n=t;for(var i=0;i<5&&n&&n!==document.body;i++,n=n.parentElement){var r=n.getBoundingClientRect(),cs=getComputedStyle(n);if(r.height>0&&r.height<=190&&r.width>innerWidth*.68&&r.bottom>innerHeight-200&&(cs.position==='fixed'||cs.position==='sticky')){n.style.setProperty('display','none','important');return}}t.style.setProperty('display','none','important')}"+
+      "function clean(root){root=root||document;var q=root.querySelectorAll?root.querySelectorAll('span,div,a,button'):[];for(var i=0;i<q.length;i++){var e=q[i],t=norm(e.innerText||e.textContent||'');if(t==='open app'||t==='öppna appen'||t==='öppna app'||t==='skaffa appen'||t==='get app'){hidePromo(e);continue}if(t.indexOf('facebook är bättre i appen')>=0||t.indexOf('facebook is better in the app')>=0){var d=e.closest('[role=dialog]')||e;if(d!==document.body)d.style.setProperty('display','none','important')}if(e.children.length<=2&&marker(t))hideCard(e)}var a=root.querySelectorAll?root.querySelectorAll('[role=article],article'):[];for(var j=0;j<a.length;j++){var l=(a[j].innerText||'').split(/\\n+/).map(function(x){return x.trim().toLowerCase()}).filter(Boolean).slice(0,14);if(l.indexOf('ad')>=0||l.indexOf('sponsored')>=0||l.indexOf('sponsrad')>=0||l.indexOf('sponsrat')>=0)a[j].setAttribute('data-adfilter-hidden','1')}}"+
+      "function msg(h){h=(h||'').toLowerCase();return h.indexOf('fb-messenger://')===0||h.indexOf('messenger://')===0||h.indexOf('facebook.com/messages')>=0||h.indexOf('/messages')>=0||h.indexOf('messenger.com')>=0}"+
+      "document.addEventListener('click',function(ev){var a=ev.target&&ev.target.closest?ev.target.closest('a'):null;if(a&&msg(a.href)){ev.preventDefault();ev.stopPropagation();location.href='fbwrapper://open-messenger'}},true);clean(document);new MutationObserver(function(ms){for(var i=0;i<ms.length;i++)for(var j=0;j<ms[i].addedNodes.length;j++){var n=ms[i].addedNodes[j];if(n&&n.nodeType===1)clean(n)}}).observe(document.documentElement,{childList:true,subtree:true});setInterval(function(){clean(document)},1200)})();";
 
-    private static final String DARK_ON_JS = "(function(){var id='fbwrapper-dark-v23',s=document.getElementById(id);if(!s){s=document.createElement('style');s.id=id;s.textContent='html{background:#111!important;filter:invert(1) hue-rotate(180deg)!important} body{background:#fff!important} img,video,picture,canvas,svg image,[style*=background-image]{filter:invert(1) hue-rotate(180deg)!important} iframe{filter:invert(1) hue-rotate(180deg)!important}';document.documentElement.appendChild(s);}document.documentElement.setAttribute('data-fbwrapper-dark','1');})();";
-    private static final String DARK_OFF_JS = "(function(){var s=document.getElementById('fbwrapper-dark-v23');if(s)s.remove();document.documentElement.removeAttribute('data-fbwrapper-dark');})();";
+    private static final String DARK_ON_JS="(function(){var id='fbwrapper-dark-v24',s=document.getElementById(id);if(!s){s=document.createElement('style');s.id=id;s.textContent='html{background:#111!important;filter:invert(1) hue-rotate(180deg)!important}body{background:#fff!important}img,video,picture,canvas,svg image,[style*=background-image],iframe{filter:invert(1) hue-rotate(180deg)!important}';document.documentElement.appendChild(s)}})();";
+    private static final String DARK_OFF_JS="(function(){var s=document.getElementById('fbwrapper-dark-v24');if(s)s.remove()})();";
+    private static final String PAUSE_JS="(function(){document.documentElement.style.setProperty('animation-play-state','paused','important');document.querySelectorAll('video').forEach(function(v){try{v.pause()}catch(e){}})})();";
+    private static final String RESUME_JS="(function(){document.documentElement.style.removeProperty('animation-play-state')})();";
 
-    private boolean getBool(String key, boolean def){return prefs.getBoolean(key,def);}
+    private boolean getBool(String k,boolean d){return prefs.getBoolean(k,d);} private int getInt(String k,int d){return prefs.getInt(k,d);}
+    private boolean systemDark(){return (getResources().getConfiguration().uiMode&Configuration.UI_MODE_NIGHT_MASK)==Configuration.UI_MODE_NIGHT_YES;}
+    private boolean isDark(){int m=getInt("theme",0);return m==2||(m==0&&systemDark());}
+    private boolean isWifi(){try{ConnectivityManager cm=(ConnectivityManager)getSystemService(Context.CONNECTIVITY_SERVICE);if(cm==null)return false;NetworkCapabilities c=cm.getNetworkCapabilities(cm.getActiveNetwork());return c!=null&&c.hasTransport(NetworkCapabilities.TRANSPORT_WIFI);}catch(Exception e){return false;}}
+    private boolean autoplayAllowed(){int m=getInt("autoplay",1);return m==2||(m==1&&isWifi());}
 
-    private void applyDarkMode(){
-        boolean dark=getBool("dark",false);
-        web.setBackgroundColor(dark?Color.rgb(17,17,17):Color.WHITE);
-        getWindow().setStatusBarColor(dark?Color.rgb(17,17,17):Color.WHITE);
-        getWindow().getDecorView().setSystemUiVisibility(dark?0:View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
-        gear.setBackgroundColor(dark?0xCC222222:0xCCFFFFFF);
-        gear.setTextColor(dark?Color.WHITE:Color.DKGRAY);
-        if(web!=null)web.evaluateJavascript(dark?DARK_ON_JS:DARK_OFF_JS,null);
-    }
+    private void applyTheme(){boolean d=isDark();web.setBackgroundColor(d?Color.rgb(17,17,17):Color.WHITE);getWindow().setStatusBarColor(d?Color.rgb(17,17,17):Color.WHITE);getWindow().getDecorView().setSystemUiVisibility(d?0:View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);gear.setBackgroundColor(d?0xCC222222:0xCCFFFFFF);gear.setTextColor(d?Color.WHITE:Color.DKGRAY);if(web!=null)web.evaluateJavascript(d?DARK_ON_JS:DARK_OFF_JS,null);}
+    private void applyPlayback(){if(web==null)return;String js=autoplayAllowed()?"(function(){document.querySelectorAll('video').forEach(function(v){v.preload='metadata'})})();":"(function(){document.querySelectorAll('video').forEach(function(v){v.autoplay=false;v.preload='metadata';try{v.pause()}catch(e){}})})();";web.evaluateJavascript(js,null);}
 
     private boolean hasMessenger(){try{getPackageManager().getPackageInfo("com.facebook.orca",0);return true;}catch(Exception e){return false;}}
+    private void openMessenger(){if(!getBool("messenger",true)){Toast.makeText(this,"Chatt är avstängd.",Toast.LENGTH_SHORT).show();return;}long n=System.currentTimeMillis();if(n-lastMessengerAttempt<1200)return;lastMessengerAttempt=n;if(!hasMessenger()){Toast.makeText(this,"Messenger är inte installerad.",Toast.LENGTH_SHORT).show();if(web!=null)web.postDelayed(()->{if(web.canGoBack())web.goBack();else web.loadUrl(HOME);},120);return;}try{Intent i=getPackageManager().getLaunchIntentForPackage("com.facebook.orca");if(i!=null)startActivity(i);}catch(Exception e){Toast.makeText(this,"Kunde inte öppna Messenger.",Toast.LENGTH_SHORT).show();}}
+    private boolean isMessagesUrl(String u){if(u==null)return false;u=u.toLowerCase();return u.equals("fbwrapper://open-messenger")||u.startsWith("fb-messenger://")||u.startsWith("messenger://")||u.contains("facebook.com/messages")||u.contains("messenger.com/")||u.contains("/messages?")||u.endsWith("/messages")||u.contains("/messages/");}
+    private boolean isFacebookHost(Uri u){String h=u.getHost();if(h==null)return true;h=h.toLowerCase();return h.endsWith("facebook.com")||h.endsWith("fbcdn.net")||h.endsWith("fbsbx.com")||h.endsWith("messenger.com");}
+    private boolean handleUrl(String u){if(u==null||u.isEmpty())return false;if(isMessagesUrl(u)){openMessenger();return true;}if(u.startsWith("intent://")){try{Intent p=Intent.parseUri(u,Intent.URI_INTENT_SCHEME);if("com.facebook.orca".equals(p.getPackage()))openMessenger();else web.loadUrl(HOME);}catch(Exception e){web.loadUrl(HOME);}return true;}try{Uri x=Uri.parse(u);if(getBool("external",true)&&(u.startsWith("http://")||u.startsWith("https://"))&&!isFacebookHost(x)){startActivity(new Intent(Intent.ACTION_VIEW,x));return true;}}catch(Exception ignored){}return false;}
 
-    private void openMessenger(){
-        if(!getBool("messenger",true)){Toast.makeText(this,"Chatt är avstängd i inställningarna.",Toast.LENGTH_SHORT).show();return;}
-        long now=System.currentTimeMillis();if(now-lastMessengerAttempt<1200)return;lastMessengerAttempt=now;
-        if(!hasMessenger()){
-            Toast.makeText(this,"Messenger är inte installerad.",Toast.LENGTH_SHORT).show();
-            if(web!=null)web.postDelayed(()->{if(web.canGoBack())web.goBack();else web.loadUrl(HOME);},120);
-            return;
-        }
-        try{Intent launch=getPackageManager().getLaunchIntentForPackage("com.facebook.orca");if(launch!=null){startActivity(launch);return;}Intent i=new Intent(Intent.ACTION_VIEW,Uri.parse("fb-messenger://threads"));i.setPackage("com.facebook.orca");startActivity(i);}catch(Exception e){Toast.makeText(this,"Kunde inte öppna Messenger.",Toast.LENGTH_SHORT).show();}
-    }
+    private void showTheme(){String[] a={"Följ systemet","Ljust","Mörkt"};int c=getInt("theme",0);new AlertDialog.Builder(this).setTitle("Tema").setSingleChoiceItems(a,c,(d,w)->{prefs.edit().putInt("theme",w).apply();d.dismiss();applyTheme();web.reload();}).show();}
+    private void showAutoplay(){String[] a={"Av","Endast Wi-Fi","Alltid"};int c=getInt("autoplay",1);new AlertDialog.Builder(this).setTitle("Automatisk video").setSingleChoiceItems(a,c,(d,w)->{prefs.edit().putInt("autoplay",w).apply();d.dismiss();applyPlayback();}).show();}
+    private void showSettings(){String[] l={"Reklamfilter","Öppna externa länkar i webbläsaren","Messenger-hantering","Batterispar i bakgrunden"};boolean[] c={getBool("adblock",true),getBool("external",true),getBool("messenger",true),getBool("battery",true)};new AlertDialog.Builder(this).setTitle("Facebook Lite – inställningar").setMultiChoiceItems(l,c,(d,w,b)->c[w]=b).setPositiveButton("Spara",(d,w)->prefs.edit().putBoolean("adblock",c[0]).putBoolean("external",c[1]).putBoolean("messenger",c[2]).putBoolean("battery",c[3]).apply()).setNeutralButton("Tema",(d,w)->showTheme()).setNegativeButton("Video",(d,w)->showAutoplay()).show();}
 
-    private boolean isMessagesUrl(String url){if(url==null)return false;String u=url.toLowerCase();return u.equals("fbwrapper://open-messenger")||u.startsWith("fb-messenger://")||u.startsWith("messenger://")||u.contains("facebook.com/messages")||u.contains("messenger.com/")||u.contains("/messages?")||u.endsWith("/messages")||u.contains("/messages/");}
-    private boolean isFacebookHost(Uri uri){String h=uri.getHost();if(h==null)return true;h=h.toLowerCase();return h.endsWith("facebook.com")||h.endsWith("fbcdn.net")||h.endsWith("fbsbx.com")||h.endsWith("messenger.com");}
+    private Intent buildMediaPicker(WebChromeClient.FileChooserParams p){Intent i=new Intent(Intent.ACTION_OPEN_DOCUMENT);i.addCategory(Intent.CATEGORY_OPENABLE);String[] a=p!=null?p.getAcceptTypes():null;boolean v=false,m=false;if(a!=null)for(String x:a){if(x==null)continue;if(x.contains("video"))v=true;if(x.contains("image"))m=true;}if(v&&!m)i.setType("video/*");else if(m&&!v)i.setType("image/*");else{i.setType("*/*");i.putExtra(Intent.EXTRA_MIME_TYPES,new String[]{"image/*","video/*"});}if(p!=null&&p.getMode()==WebChromeClient.FileChooserParams.MODE_OPEN_MULTIPLE)i.putExtra(Intent.EXTRA_ALLOW_MULTIPLE,true);return i;}
 
-    private boolean handleUrl(String url){
-        if(url==null||url.isEmpty())return false;
-        if(isMessagesUrl(url)){openMessenger();return true;}
-        if(url.startsWith("intent://")){try{Intent parsed=Intent.parseUri(url,Intent.URI_INTENT_SCHEME);if("com.facebook.orca".equals(parsed.getPackage()))openMessenger();else web.loadUrl(HOME);}catch(Exception e){web.loadUrl(HOME);}return true;}
-        try{Uri u=Uri.parse(url);if(getBool("external",true)&&(url.startsWith("http://")||url.startsWith("https://"))&&!isFacebookHost(u)){startActivity(new Intent(Intent.ACTION_VIEW,u));return true;}}catch(Exception ignored){}
-        return false;
-    }
+    @SuppressLint("SetJavaScriptEnabled") @Override public void onCreate(Bundle b){super.onCreate(b);prefs=getSharedPreferences("fb_lite_prefs",MODE_PRIVATE);FrameLayout root=new FrameLayout(this);root.setBackgroundColor(Color.WHITE);root.setOnApplyWindowInsetsListener((v,i)->{v.setPadding(0,i.getSystemWindowInsetTop(),0,0);return i;});root.requestApplyInsets();web=new WebView(this);progress=new ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal);gear=new TextView(this);gear.setText("⚙");gear.setTextSize(22);gear.setGravity(Gravity.CENTER);gear.setPadding(8,0,8,0);gear.setElevation(10f);gear.setOnClickListener(v->showSettings());root.addView(web,new FrameLayout.LayoutParams(-1,-1));root.addView(progress,new FrameLayout.LayoutParams(-1,6));FrameLayout.LayoutParams gp=new FrameLayout.LayoutParams(64,64,Gravity.END|Gravity.BOTTOM);gp.setMargins(0,0,12,18);root.addView(gear,gp);setContentView(root);WebSettings s=web.getSettings();s.setJavaScriptEnabled(true);s.setDomStorageEnabled(true);s.setDatabaseEnabled(true);s.setMediaPlaybackRequiresUserGesture(false);s.setSupportZoom(false);s.setCacheMode(WebSettings.LOAD_DEFAULT);s.setAllowFileAccess(true);s.setAllowContentAccess(true);CookieManager cm=CookieManager.getInstance();cm.setAcceptCookie(true);cm.setAcceptThirdPartyCookies(web,true);applyTheme();
+      web.setOnTouchListener((v,e)->{if(e.getAction()==MotionEvent.ACTION_DOWN){downY=e.getY();pullReady=false;}else if(e.getAction()==MotionEvent.ACTION_MOVE&&web.getScrollY()==0&&e.getY()-downY>170)pullReady=true;else if(e.getAction()==MotionEvent.ACTION_UP&&pullReady){pullReady=false;Toast.makeText(this,"Uppdaterar…",Toast.LENGTH_SHORT).show();web.reload();}return false;});
+      web.setWebChromeClient(new WebChromeClient(){@Override public void onProgressChanged(WebView v,int n){progress.setProgress(n);progress.setVisibility(n<100?View.VISIBLE:View.GONE);}@Override public boolean onShowFileChooser(WebView w,ValueCallback<Uri[]> cb,FileChooserParams p){if(fileCallback!=null)fileCallback.onReceiveValue(null);fileCallback=cb;try{startActivityForResult(buildMediaPicker(p),FILE_PICKER);return true;}catch(Exception e){fileCallback=null;return false;}}});
+      web.setWebViewClient(new WebViewClient(){@Override public void onPageStarted(WebView v,String u,Bitmap f){progress.setVisibility(View.VISIBLE);if(isMessagesUrl(u)){v.stopLoading();openMessenger();}}@Override public void onPageFinished(WebView v,String u){CookieManager.getInstance().flush();if(u==null||u.equals("about:blank")){v.postDelayed(()->v.loadUrl(HOME),250);return;}if(isMessagesUrl(u)){openMessenger();return;}if(getBool("adblock",true))v.evaluateJavascript(FILTER_JS,null);v.evaluateJavascript(isDark()?DARK_ON_JS:DARK_OFF_JS,null);applyPlayback();}@Override public boolean shouldOverrideUrlLoading(WebView v,WebResourceRequest r){return handleUrl(r.getUrl().toString());}@Override public boolean shouldOverrideUrlLoading(WebView v,String u){return handleUrl(u);}@Override public WebResourceResponse shouldInterceptRequest(WebView v,WebResourceRequest r){String u=r.getUrl().toString().toLowerCase();if(getBool("adblock",true)&&(u.contains("doubleclick.net")||u.contains("googlesyndication.com")||u.contains("googleadservices.com")||u.contains("connect.facebook.net")||u.contains("facebook.com/tr/")||u.contains("facebook.com/ajax/bz")))return new WebResourceResponse("text/plain","utf-8",null);return super.shouldInterceptRequest(v,r);}});web.loadUrl(HOME);}
 
-    private void showSettings(){
-        String[] labels={"Reklamfilter","Mörkt läge","Öppna externa länkar i webbläsaren","Messenger-hantering"};
-        boolean[] checked={getBool("adblock",true),getBool("dark",false),getBool("external",true),getBool("messenger",true)};
-        new AlertDialog.Builder(this).setTitle("Facebook Lite – inställningar").setMultiChoiceItems(labels,checked,(d,which,isChecked)->checked[which]=isChecked).setPositiveButton("Spara",(d,w)->{
-            prefs.edit().putBoolean("adblock",checked[0]).putBoolean("dark",checked[1]).putBoolean("external",checked[2]).putBoolean("messenger",checked[3]).apply();
-            applyDarkMode();
-            if(web!=null)web.reload();
-        }).setNeutralButton("Start",(d,w)->web.loadUrl(HOME)).setNegativeButton("Avbryt",null).show();
-    }
-
-    private Intent buildMediaPicker(WebChromeClient.FileChooserParams params){
-        Intent i=new Intent(Intent.ACTION_OPEN_DOCUMENT);i.addCategory(Intent.CATEGORY_OPENABLE);
-        String[] accept=params!=null?params.getAcceptTypes():null;boolean video=false,image=false;
-        if(accept!=null){for(String a:accept){if(a==null)continue;if(a.contains("video"))video=true;if(a.contains("image"))image=true;}}
-        if(video&&!image)i.setType("video/*");else if(image&&!video)i.setType("image/*");else{i.setType("*/*");i.putExtra(Intent.EXTRA_MIME_TYPES,new String[]{"image/*","video/*"});}
-        if(params!=null&&params.getMode()==WebChromeClient.FileChooserParams.MODE_OPEN_MULTIPLE)i.putExtra(Intent.EXTRA_ALLOW_MULTIPLE,true);
-        return i;
-    }
-
-    @SuppressLint("SetJavaScriptEnabled")
-    @Override public void onCreate(Bundle b){super.onCreate(b);
-        prefs=getSharedPreferences("fb_lite_prefs",MODE_PRIVATE);
-        getWindow().setStatusBarColor(Color.WHITE);getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
-        FrameLayout root=new FrameLayout(this);root.setBackgroundColor(Color.WHITE);root.setOnApplyWindowInsetsListener((v,insets)->{v.setPadding(0,insets.getSystemWindowInsetTop(),0,0);return insets;});root.requestApplyInsets();
-        web=new WebView(this);progress=new ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal);
-        gear=new TextView(this);gear.setText("⚙");gear.setTextSize(22);gear.setGravity(Gravity.CENTER);gear.setPadding(8,0,8,0);gear.setElevation(10f);gear.setOnClickListener(v->showSettings());
-        root.addView(web,new FrameLayout.LayoutParams(-1,-1));FrameLayout.LayoutParams pp=new FrameLayout.LayoutParams(-1,6);root.addView(progress,pp);FrameLayout.LayoutParams gp=new FrameLayout.LayoutParams(64,64,Gravity.END|Gravity.BOTTOM);gp.setMargins(0,0,12,18);root.addView(gear,gp);setContentView(root);
-        WebSettings s=web.getSettings();s.setJavaScriptEnabled(true);s.setDomStorageEnabled(true);s.setDatabaseEnabled(true);s.setMediaPlaybackRequiresUserGesture(false);s.setSupportZoom(false);s.setCacheMode(WebSettings.LOAD_DEFAULT);s.setAllowFileAccess(true);s.setAllowContentAccess(true);
-        CookieManager cm=CookieManager.getInstance();cm.setAcceptCookie(true);cm.setAcceptThirdPartyCookies(web,true);applyDarkMode();
-        web.setOnTouchListener((v,e)->{if(e.getAction()==MotionEvent.ACTION_DOWN){downY=e.getY();pullReady=false;}else if(e.getAction()==MotionEvent.ACTION_MOVE&&web.getScrollY()==0&&e.getY()-downY>170)pullReady=true;else if(e.getAction()==MotionEvent.ACTION_UP&&pullReady){pullReady=false;Toast.makeText(this,"Uppdaterar…",Toast.LENGTH_SHORT).show();web.reload();}return false;});
-        web.setWebChromeClient(new WebChromeClient(){@Override public void onProgressChanged(WebView v,int n){progress.setProgress(n);progress.setVisibility(n<100?View.VISIBLE:View.GONE);}@Override public boolean onShowFileChooser(WebView w,ValueCallback<Uri[]> cb,FileChooserParams params){if(fileCallback!=null)fileCallback.onReceiveValue(null);fileCallback=cb;try{startActivityForResult(buildMediaPicker(params),FILE_PICKER);return true;}catch(Exception e){fileCallback=null;Toast.makeText(MainActivity.this,"Kunde inte öppna bildväljaren.",Toast.LENGTH_SHORT).show();return false;}}});
-        web.setWebViewClient(new WebViewClient(){
-            @Override public void onPageStarted(WebView v,String u,Bitmap f){progress.setVisibility(View.VISIBLE);if(isMessagesUrl(u)){v.stopLoading();openMessenger();}}
-            @Override public void onPageFinished(WebView v,String u){CookieManager.getInstance().flush();if(u==null||u.equals("about:blank")){v.postDelayed(()->v.loadUrl(HOME),250);return;}if(isMessagesUrl(u)){openMessenger();return;}if(getBool("adblock",true))v.evaluateJavascript(FILTER_JS,null);v.evaluateJavascript(getBool("dark",false)?DARK_ON_JS:DARK_OFF_JS,null);}
-            @Override public boolean shouldOverrideUrlLoading(WebView v,WebResourceRequest r){return handleUrl(r.getUrl().toString());}
-            @Override public boolean shouldOverrideUrlLoading(WebView v,String u){return handleUrl(u);}
-            @Override public WebResourceResponse shouldInterceptRequest(WebView v,WebResourceRequest r){if(!getBool("adblock",true))return super.shouldInterceptRequest(v,r);String u=r.getUrl().toString();if(u.contains("doubleclick.net")||u.contains("googlesyndication.com")||u.contains("googleadservices.com"))return new WebResourceResponse("text/plain","utf-8",null);return super.shouldInterceptRequest(v,r);}
-        });
-        web.loadUrl(HOME);
-    }
-
-    @Override protected void onActivityResult(int requestCode,int resultCode,Intent data){super.onActivityResult(requestCode,resultCode,data);if(requestCode!=FILE_PICKER||fileCallback==null)return;Uri[] result=null;if(resultCode==RESULT_OK&&data!=null){if(data.getClipData()!=null){int n=data.getClipData().getItemCount();result=new Uri[n];for(int i=0;i<n;i++)result[i]=data.getClipData().getItemAt(i).getUri();}else if(data.getData()!=null)result=new Uri[]{data.getData()};}fileCallback.onReceiveValue(result);fileCallback=null;}
-    @Override protected void onPause(){CookieManager.getInstance().flush();if(web!=null)web.onPause();super.onPause();}
-    @Override protected void onResume(){super.onResume();if(web!=null){web.onResume();String u=web.getUrl();if(u==null||u.equals("about:blank"))web.loadUrl(HOME);else applyDarkMode();}}
+    @Override protected void onActivityResult(int r,int c,Intent d){super.onActivityResult(r,c,d);if(r!=FILE_PICKER||fileCallback==null)return;Uri[] x=null;if(c==RESULT_OK&&d!=null){if(d.getClipData()!=null){int n=d.getClipData().getItemCount();x=new Uri[n];for(int i=0;i<n;i++)x[i]=d.getClipData().getItemAt(i).getUri();}else if(d.getData()!=null)x=new Uri[]{d.getData()};}fileCallback.onReceiveValue(x);fileCallback=null;}
+    @Override protected void onPause(){CookieManager.getInstance().flush();if(web!=null){if(getBool("battery",true))web.evaluateJavascript(PAUSE_JS,null);web.onPause();}super.onPause();}
+    @Override protected void onResume(){super.onResume();if(web!=null){web.onResume();String u=web.getUrl();if(u==null||u.equals("about:blank"))web.loadUrl(HOME);else{applyTheme();web.evaluateJavascript(RESUME_JS,null);applyPlayback();}}}
     @Override protected void onDestroy(){CookieManager.getInstance().flush();super.onDestroy();}
     @Override public void onBackPressed(){if(web!=null&&web.canGoBack())web.goBack();else super.onBackPressed();}
 }
