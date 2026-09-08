@@ -2,7 +2,6 @@ package se.mackan.fblite;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
-import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.net.Uri;
@@ -22,7 +21,7 @@ public class MainActivity extends Activity {
     private WebView web;
     private ProgressBar progress;
     private static final String HOME = "https://m.facebook.com/";
-    private static final String MESSAGES = "https://m.facebook.com/messages/";
+    private static final String MESSAGES_FALLBACK = "https://mbasic.facebook.com/messages/";
 
     private static final String FILTER_JS = "(function(){" +
       "if(window.__fbAdFilterV13)return;window.__fbAdFilterV13=true;"+
@@ -36,22 +35,35 @@ public class MainActivity extends Activity {
       "function clean(root){root=root||document;cleanPromos(root);var nodes=root.querySelectorAll?root.querySelectorAll('span,div,a'):[];for(var i=0;i<nodes.length;i++){var e=nodes[i];if(e.children.length>2)continue;var t=e.innerText||e.textContent||'';if(isMarkerText(t))hideCard(e);}var arts=root.querySelectorAll?root.querySelectorAll('[role=article],article'):[];for(var j=0;j<arts.length;j++){var a=arts[j];if(a.getAttribute('data-adfilter-hidden'))continue;var lines=(a.innerText||'').split(/\\n+/).map(function(x){return x.trim().toLowerCase();}).filter(Boolean).slice(0,12);if(lines.indexOf('ad')>=0||lines.indexOf('sponsored')>=0||lines.indexOf('sponsrad')>=0){a.setAttribute('data-adfilter-hidden','1');a.style.setProperty('display','none','important');}}}"+
       "clean(document);var mo=new MutationObserver(function(ms){for(var i=0;i<ms.length;i++){for(var j=0;j<ms[i].addedNodes.length;j++){var n=ms[i].addedNodes[j];if(n&&n.nodeType===1)clean(n);}}});mo.observe(document.documentElement,{childList:true,subtree:true});setInterval(function(){clean(document);},900);})();";
 
+    private boolean openMessengerIfInstalled(String deepLink) {
+        try {
+            getPackageManager().getPackageInfo("com.facebook.orca", 0);
+            Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse(deepLink));
+            i.setPackage("com.facebook.orca");
+            startActivity(i);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     private boolean handleUrl(String url) {
         if (url == null || url.isEmpty()) return false;
         if (url.startsWith("fb-messenger://") || url.startsWith("messenger://")) {
-            try {
-                Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
-                startActivity(i);
-            } catch (ActivityNotFoundException ex) {
-                web.loadUrl(MESSAGES);
-            }
+            if (!openMessengerIfInstalled(url)) web.loadUrl(MESSAGES_FALLBACK);
             return true;
         }
         if (url.startsWith("intent://")) {
             try {
-                Intent i = Intent.parseUri(url, Intent.URI_INTENT_SCHEME);
-                startActivity(i);
-            } catch (Exception ex) {
+                Intent parsed = Intent.parseUri(url, Intent.URI_INTENT_SCHEME);
+                String pkg = parsed.getPackage();
+                if ("com.facebook.orca".equals(pkg)) {
+                    parsed.setPackage("com.facebook.orca");
+                    startActivity(parsed);
+                } else {
+                    web.loadUrl(HOME);
+                }
+            } catch (Exception e) {
                 web.loadUrl(HOME);
             }
             return true;
@@ -63,7 +75,7 @@ public class MainActivity extends Activity {
     @Override public void onCreate(Bundle b){ super.onCreate(b);
         FrameLayout root=new FrameLayout(this); web=new WebView(this); progress=new ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal);
         root.addView(web,new FrameLayout.LayoutParams(-1,-1)); FrameLayout.LayoutParams p=new FrameLayout.LayoutParams(-1,6); root.addView(progress,p); setContentView(root);
-        WebSettings s=web.getSettings(); s.setJavaScriptEnabled(true); s.setDomStorageEnabled(true); s.setDatabaseEnabled(true); s.setMediaPlaybackRequiresUserGesture(false); s.setSupportZoom(false); s.setUserAgentString(s.getUserAgentString()+" FBWebWrapper/1.4");
+        WebSettings s=web.getSettings(); s.setJavaScriptEnabled(true); s.setDomStorageEnabled(true); s.setDatabaseEnabled(true); s.setMediaPlaybackRequiresUserGesture(false); s.setSupportZoom(false); s.setUserAgentString(s.getUserAgentString()+" FBWebWrapper/1.5");
         CookieManager.getInstance().setAcceptCookie(true); CookieManager.getInstance().setAcceptThirdPartyCookies(web,true);
         web.setWebChromeClient(new WebChromeClient(){@Override public void onProgressChanged(WebView v,int n){progress.setProgress(n);progress.setVisibility(n<100?View.VISIBLE:View.GONE);}});
         web.setWebViewClient(new WebViewClient(){
