@@ -16,20 +16,17 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
-      - name: Create stable Facebook signing key
-        run: |
-          keytool -genkeypair -v -keystore adfilter-stable.jks -storepass adfilter123 -keypass adfilter123 -alias adfilter -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Facebook AdFilter, OU=Personal, O=Mackan, L=Gavle, C=SE"
       - name: Build APKs
         run: gradle --no-daemon clean :facebook:assembleDebug :youtube:assembleDebug
       - name: Prepare APKs
         run: |
-          cp facebook/build/outputs/apk/debug/facebook-debug.apk Facebook-Lite-AdFilter-v1.2.apk
+          cp facebook/build/outputs/apk/debug/facebook-debug.apk Facebook-Lite-AdFilter-v1.3.apk
           cp youtube/build/outputs/apk/debug/youtube-debug.apk YouTube-Lite-AdFilter-v1.0.apk
           ls -lh *.apk
       - uses: actions/upload-artifact@v4
         with:
           name: Social-Wrappers-APKs
           path: |
-            Facebook-Lite-AdFilter-v1.2.apk
+            Facebook-Lite-AdFilter-v1.3.apk
             YouTube-Lite-AdFilter-v1.0.apk
           retention-days: 30
