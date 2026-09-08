@@ -39,14 +39,16 @@ jobs:
         run: python .github/v223_patch.py
       - name: Apply v2.2.4 savings goals
         run: python .github/v224_patch.py
+      - name: Apply v2.2.5 savings registration
+        run: python .github/v225_patch.py
       - name: Build APK
         run: gradle --no-daemon :app:assembleDebug
       - name: Prepare APK
-        run: cp app/build/outputs/apk/debug/app-debug.apk Min-Ekonomi-v2.2.4-unsigned.apk
+        run: cp app/build/outputs/apk/debug/app-debug.apk Min-Ekonomi-v2.2.5.apk
       - uses: actions/upload-artifact@v4
         with:
-          name: Min-Ekonomi-v2.2.4-unsigned
-          path: Min-Ekonomi-v2.2.4-unsigned.apk
+          name: Min-Ekonomi-v2.2.5
+          path: Min-Ekonomi-v2.2.5.apk
       - name: Prepare apksigner tool
         run: |
           BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
