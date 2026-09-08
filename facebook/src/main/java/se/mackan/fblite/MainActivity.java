@@ -38,9 +38,9 @@ public class MainActivity extends Activity {
     private boolean pullReady = false;
 
     private static final String FILTER_JS = "(function(){"+
-      "if(window.__fbAdFilterV22)return;window.__fbAdFilterV22=true;"+
+      "if(window.__fbAdFilterV23)return;window.__fbAdFilterV23=true;"+
       "var css='[aria-label*=Sponsored i],[aria-label*=Sponsrad i],[aria-label*=Sponsrat i]{display:none!important}';"+
-      "var s=document.getElementById('adfilter-style-v22');if(!s){s=document.createElement('style');s.id='adfilter-style-v22';s.innerHTML=css;document.documentElement.appendChild(s);}"+
+      "var s=document.getElementById('adfilter-style-v23');if(!s){s=document.createElement('style');s.id='adfilter-style-v23';s.innerHTML=css;document.documentElement.appendChild(s);}"+
       "function norm(t){return (t||'').replace(/\\s+/g,' ').trim().toLowerCase();}"+
       "function isMarkerText(t){t=norm(t);return t==='ad'||t==='sponsored'||t==='sponsrad'||t==='sponsrat';}"+
       "function hideCard(marker){var card=marker.closest('[role=article],article');if(!card){var n=marker,best=null;for(var i=0;i<9&&n&&n!==document.body;i++,n=n.parentElement){var r=n.getBoundingClientRect(),txt=n.innerText||'';if(r.width>innerWidth*.72&&r.height>80&&r.height<innerHeight*3.2&&txt.length<9000)best=n;}card=best;}if(card&&card!==document.body&&card!==document.documentElement){card.setAttribute('data-adfilter-hidden','1');card.style.setProperty('display','none','important');}}"+
@@ -53,15 +53,15 @@ public class MainActivity extends Activity {
       "function detectMessengerGate(){var t=norm(document.body&&document.body.innerText||'');if(t.indexOf('skaffa messenger-appen')>=0||t.indexOf('switch over to messenger')>=0||t.indexOf('get messenger to read and respond')>=0||t.indexOf('hämta messenger')>=0)location.href='fbwrapper://open-messenger';}"+
       "clean(document);detectMessengerGate();var mo=new MutationObserver(function(ms){for(var i=0;i<ms.length;i++){for(var j=0;j<ms[i].addedNodes.length;j++){var n=ms[i].addedNodes[j];if(n&&n.nodeType===1)clean(n);}}detectMessengerGate();});mo.observe(document.documentElement,{childList:true,subtree:true});setInterval(function(){clean(document);detectMessengerGate();},900);})();";
 
-    private static final String DARK_ON_JS = "(function(){var id='fbwrapper-dark-v22',s=document.getElementById(id);if(!s){s=document.createElement('style');s.id=id;s.textContent='html,body{background:#121212!important;color:#e8e8e8!important} body>div,main,[role=main],[role=feed],[role=article],article,[role=navigation],[role=banner],header,nav,section{background-color:#121212!important;color:#e8e8e8!important} [role=article],article{border-color:#333!important} div,span,p,h1,h2,h3,h4,h5,h6,label{color:inherit} input,textarea,[contenteditable=true]{background:#242424!important;color:#fff!important;border-color:#444!important} a{color:#8ab4f8!important} [role=dialog]{background:#202020!important;color:#fff!important}';document.documentElement.appendChild(s);}document.documentElement.style.backgroundColor='#121212';document.body&&document.body.style.setProperty('background-color','#121212','important');})();";
-    private static final String DARK_OFF_JS = "(function(){var s=document.getElementById('fbwrapper-dark-v22');if(s)s.remove();document.documentElement.style.backgroundColor='';if(document.body)document.body.style.removeProperty('background-color');})();";
+    private static final String DARK_ON_JS = "(function(){var id='fbwrapper-dark-v23',s=document.getElementById(id);if(!s){s=document.createElement('style');s.id=id;s.textContent='html{background:#111!important;filter:invert(1) hue-rotate(180deg)!important} body{background:#fff!important} img,video,picture,canvas,svg image,[style*=background-image]{filter:invert(1) hue-rotate(180deg)!important} iframe{filter:invert(1) hue-rotate(180deg)!important}';document.documentElement.appendChild(s);}document.documentElement.setAttribute('data-fbwrapper-dark','1');})();";
+    private static final String DARK_OFF_JS = "(function(){var s=document.getElementById('fbwrapper-dark-v23');if(s)s.remove();document.documentElement.removeAttribute('data-fbwrapper-dark');})();";
 
     private boolean getBool(String key, boolean def){return prefs.getBoolean(key,def);}
 
     private void applyDarkMode(){
         boolean dark=getBool("dark",false);
-        web.setBackgroundColor(dark?Color.rgb(18,18,18):Color.WHITE);
-        getWindow().setStatusBarColor(dark?Color.rgb(18,18,18):Color.WHITE);
+        web.setBackgroundColor(dark?Color.rgb(17,17,17):Color.WHITE);
+        getWindow().setStatusBarColor(dark?Color.rgb(17,17,17):Color.WHITE);
         getWindow().getDecorView().setSystemUiVisibility(dark?0:View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
         gear.setBackgroundColor(dark?0xCC222222:0xCCFFFFFF);
         gear.setTextColor(dark?Color.WHITE:Color.DKGRAY);
