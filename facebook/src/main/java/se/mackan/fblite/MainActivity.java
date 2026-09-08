@@ -22,7 +22,6 @@ public class MainActivity extends Activity {
     private WebView web;
     private ProgressBar progress;
     private static final String HOME = "https://m.facebook.com/";
-    private static final String CHROME_UA = "Mozilla/5.0 (Linux; Android 16; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Mobile Safari/537.36";
 
     private static final String FILTER_JS = "(function(){" +
       "if(window.__fbAdFilterV13)return;window.__fbAdFilterV13=true;"+
@@ -53,7 +52,6 @@ public class MainActivity extends Activity {
         try {
             Intent launch = getPackageManager().getLaunchIntentForPackage("com.facebook.orca");
             if (launch != null) {
-                launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 startActivity(launch);
                 return;
             }
@@ -69,8 +67,8 @@ public class MainActivity extends Activity {
         if (url == null) return false;
         String u = url.toLowerCase();
         return u.startsWith("fb-messenger://") || u.startsWith("messenger://") ||
-               u.contains("facebook.com/messages") || u.contains("facebook.com/messages/") ||
-               u.contains("messenger.com/") || u.contains("/messages?") || u.endsWith("/messages");
+               u.contains("facebook.com/messages") || u.contains("messenger.com/") ||
+               u.contains("/messages?") || u.endsWith("/messages") || u.contains("/messages/");
     }
 
     private boolean handleUrl(String url) {
@@ -82,11 +80,8 @@ public class MainActivity extends Activity {
         if (url.startsWith("intent://")) {
             try {
                 Intent parsed = Intent.parseUri(url, Intent.URI_INTENT_SCHEME);
-                if ("com.facebook.orca".equals(parsed.getPackage())) {
-                    openMessenger();
-                } else {
-                    web.loadUrl(HOME);
-                }
+                if ("com.facebook.orca".equals(parsed.getPackage())) openMessenger();
+                else web.loadUrl(HOME);
             } catch (Exception e) {
                 web.loadUrl(HOME);
             }
@@ -106,7 +101,6 @@ public class MainActivity extends Activity {
         s.setMediaPlaybackRequiresUserGesture(false);
         s.setSupportZoom(false);
         s.setCacheMode(WebSettings.LOAD_DEFAULT);
-        s.setUserAgentString(CHROME_UA);
 
         CookieManager cm=CookieManager.getInstance();
         cm.setAcceptCookie(true);
@@ -114,17 +108,10 @@ public class MainActivity extends Activity {
 
         web.setWebChromeClient(new WebChromeClient(){@Override public void onProgressChanged(WebView v,int n){progress.setProgress(n);progress.setVisibility(n<100?View.VISIBLE:View.GONE);}});
         web.setWebViewClient(new WebViewClient(){
-            @Override public void onPageStarted(WebView v,String u,Bitmap f){
-                progress.setVisibility(View.VISIBLE);
-                if (isMessagesUrl(u)) {
-                    v.stopLoading();
-                    openMessenger();
-                }
-            }
+            @Override public void onPageStarted(WebView v,String u,Bitmap f){progress.setVisibility(View.VISIBLE);}
             @Override public void onPageFinished(WebView v,String u){
                 CookieManager.getInstance().flush();
                 if (u==null || u.equals("about:blank")) { v.postDelayed(() -> v.loadUrl(HOME), 250); return; }
-                if (isMessagesUrl(u)) { v.stopLoading(); return; }
                 v.evaluateJavascript(FILTER_JS,null);
             }
             @Override public boolean shouldOverrideUrlLoading(WebView v,WebResourceRequest r){return handleUrl(r.getUrl().toString());}
@@ -135,7 +122,7 @@ public class MainActivity extends Activity {
     }
 
     @Override protected void onPause(){CookieManager.getInstance().flush();if(web!=null) web.onPause();super.onPause();}
-    @Override protected void onResume(){super.onResume();if(web!=null){web.onResume();String u=web.getUrl();if(u==null||u.equals("about:blank")||isMessagesUrl(u))web.loadUrl(HOME);}}
+    @Override protected void onResume(){super.onResume();if(web!=null){web.onResume();String u=web.getUrl();if(u==null||u.equals("about:blank"))web.loadUrl(HOME);}}
     @Override protected void onDestroy(){CookieManager.getInstance().flush();super.onDestroy();}
     @Override public void onBackPressed(){if(web!=null&&web.canGoBack())web.goBack();else super.onBackPressed();}
 }
