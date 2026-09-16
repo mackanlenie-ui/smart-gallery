@@ -7,14 +7,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-      - uses: android-actions/setup-android@v3
-      - uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.9'
       - run: python .github/v17_patch.py
       - run: python .github/v18_patch.py
       - run: python .github/v181_patch.py
@@ -35,5 +27,13 @@ jobs:
       - run: python .github/v2210_patch.py
       - name: Test v3.0.1 requirements
         run: python .github/test_v301.py
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
       - name: Build APK
         run: gradle --no-daemon :app:assembleDebug
