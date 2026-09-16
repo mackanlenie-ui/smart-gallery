@@ -15,47 +15,25 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
-      - name: Apply v1.7 features
-        run: python .github/v17_patch.py
-      - name: Apply v1.8 features
-        run: python .github/v18_patch.py
-      - name: Apply v1.8.1 biometric fix
-        run: python .github/v181_patch.py
-      - name: Apply v1.9 improvements
-        run: python .github/v19_patch.py
-      - name: Apply v1.9.1 planned purchase fix
-        run: python .github/v191_patch.py
-      - name: Apply v2.0 improvements
-        run: python .github/v20_patch.py
-      - name: Apply v2.1 improvements
-        run: python .github/v21_patch.py
-      - name: Apply v2.2 improvements
-        run: python .github/v22_patch.py
-      - name: Apply v2.2.1 screenshot fix
-        run: python .github/v221_patch.py
-      - name: Apply v2.2.2 fixes
-        run: python .github/v222_patch.py
-      - name: Apply v2.2.3 layout polish
-        run: python .github/v223_patch.py
-      - name: Apply v2.2.4 savings goals
-        run: python .github/v224_patch.py
-      - name: Apply v2.2.5 savings registration
-        run: python .github/v225_patch.py
-      - name: Apply v2.2.6 unified balance fix
-        run: python .github/v226_patch.py
-      - name: Apply v2.2.7 balance sync
-        run: python .github/v227_patch.py
-      - name: Apply v2.2.8 account summary fix
-        run: python .github/v228_patch.py
-      - name: Apply v2.2.9 smart insights fix
-        run: python .github/v229_patch.py
-      - name: Apply v2.2.10 smarter insights
-        run: python .github/v2210_patch.py
+      - run: python .github/v17_patch.py
+      - run: python .github/v18_patch.py
+      - run: python .github/v181_patch.py
+      - run: python .github/v19_patch.py
+      - run: python .github/v191_patch.py
+      - run: python .github/v20_patch.py
+      - run: python .github/v21_patch.py
+      - run: python .github/v22_patch.py
+      - run: python .github/v221_patch.py
+      - run: python .github/v222_patch.py
+      - run: python .github/v223_patch.py
+      - run: python .github/v224_patch.py
+      - run: python .github/v225_patch.py
+      - run: python .github/v226_patch.py
+      - run: python .github/v227_patch.py
+      - run: python .github/v228_patch.py
+      - run: python .github/v229_patch.py
+      - run: python .github/v2210_patch.py
+      - name: Test v3.0.1 requirements
+        run: python .github/test_v301.py
       - name: Build APK
         run: gradle --no-daemon :app:assembleDebug
-      - name: Prepare APK
-        run: cp app/build/outputs/apk/debug/app-debug.apk Min-Ekonomi-v3.0.apk
-      - uses: actions/upload-artifact@v4
-        with:
-          name: Min-Ekonomi-v3.0
-          path: Min-Ekonomi-v3.0.apk
