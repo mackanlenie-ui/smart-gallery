@@ -29,6 +29,8 @@ jobs:
         run: python .github/v301_patch.py
       - name: Test v3.0.1 requirements
         run: python .github/test_v301.py
+      - name: Apply v3.0.2 settings restoration
+        run: python .github/v302_patch.py
       - name: Test v3.0.2 settings preservation
         run: python .github/test_v302.py
       - uses: actions/setup-java@v4
@@ -41,8 +43,8 @@ jobs:
       - name: Build APK
         run: gradle --no-daemon :app:assembleDebug
       - name: Prepare APK
-        run: cp app/build/outputs/apk/debug/app-debug.apk Min-Ekonomi-v3.0.1.apk
+        run: cp app/build/outputs/apk/debug/app-debug.apk Min-Ekonomi-v3.0.2.apk
       - uses: actions/upload-artifact@v4
         with:
-          name: Min-Ekonomi-v3.0.1
-          path: Min-Ekonomi-v3.0.1.apk
+          name: Min-Ekonomi-v3.0.2
+          path: Min-Ekonomi-v3.0.2.apk
