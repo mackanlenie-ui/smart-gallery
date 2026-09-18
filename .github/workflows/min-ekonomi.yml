@@ -29,6 +29,8 @@ jobs:
         run: python .github/v301_patch.py
       - name: Test v3.0.1 requirements
         run: python .github/test_v301.py
+      - name: Test v3.0.2 settings preservation
+        run: python .github/test_v302.py
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
