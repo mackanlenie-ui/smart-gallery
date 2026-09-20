@@ -33,7 +33,7 @@ jobs:
         run: python .github/v302_patch.py
       - name: Test v3.0.2 settings preservation
         run: python .github/test_v302.py
-      - uses: actions/setup-java@v4
+      - name: Test v3.0.3 requirements (red)\n        run: python .github/test_v303.py\n      - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
