@@ -33,7 +33,7 @@ jobs:
         run: python .github/v302_patch.py
       - name: Test v3.0.2 settings preservation
         run: python .github/test_v302.py
-      - name: Test v3.0.3 requirements (red)\n        run: python .github/test_v303.py\n      - uses: actions/setup-java@v4
+      - name: Apply v3.0.3 finance improvements\n        run: python .github/v303_patch.py\n      - name: Test v3.0.3 requirements\n        run: python .github/test_v303.py\n      - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
@@ -43,8 +43,8 @@ jobs:
       - name: Build APK
         run: gradle --no-daemon :app:assembleDebug
       - name: Prepare APK
-        run: cp app/build/outputs/apk/debug/app-debug.apk Min-Ekonomi-v3.0.2.apk
+        run: cp app/build/outputs/apk/debug/app-debug.apk Min-Ekonomi-v3.0.3.apk
       - uses: actions/upload-artifact@v4
         with:
           name: Min-Ekonomi-v3.0.2
-          path: Min-Ekonomi-v3.0.2.apk
+          path: Min-Ekonomi-v3.0.3.apk
